@@ -1,0 +1,23 @@
+{
+  "name": "keaflow",
+  "version": "1.0.0",
+  "description": "KeaLabs — Motor de Orçamentos + Preparação de Payloads para Integrações",
+  "main": "dist/server.js",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "dev:web": "cd web && npm run dev",
+    "build": "tsc",
+    "start": "node dist/server.js"
+  },
+  "dependencies": {
+    "@fastify/cors": "^10.0.2",
+    "dotenv": "^16.4.7",
+    "fastify": "^5.8.2",
+    "socket.io": "^4.8.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

@@ -1,0 +1,78 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Variáveis da paleta KeaLabs ─────────────────────────────────────────── */
+:root {
+  --kea-bg:       #FFF7F3;
+  --kea-surface:  #FFFFFF;
+  --kea-border:   #FED7AA;   /* orange-200 */
+  --kea-heading:  #1C0A00;
+  --kea-body:     #78350F;   /* amber-900  */
+  --kea-subtle:   #92400E;   /* amber-800  */
+  --kea-orange:   #EA580C;
+  --kea-muted:    #FDBA74;   /* orange-300 */
+}
+
+.dark {
+  --kea-bg:       #020617;
+  --kea-surface:  #0F172A;
+  --kea-border:   #1E293B;
+  --kea-heading:  #F1F5F9;
+  --kea-body:     #94A3B8;
+  --kea-subtle:   #64748B;
+  --kea-muted:    #334155;
+}
+
+@layer base {
+  body {
+    background-color: var(--kea-bg);
+    color: var(--kea-heading);
+    font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    transition: background-color 0.3s, color 0.3s;
+  }
+}
+
+@layer components {
+  .card {
+    background-color: var(--kea-surface);
+    border: 1px solid var(--kea-border);
+    color: var(--kea-heading);
+    @apply rounded-2xl p-6 shadow-sm dark:shadow-none;
+  }
+
+  .btn-primary {
+    @apply bg-orange-600 hover:bg-orange-700 text-white font-bold px-6 py-3 rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-ghost {
+    background: transparent;
+    border: 1px solid var(--kea-border);
+    color: var(--kea-body);
+    @apply px-4 py-2 rounded-xl transition-all duration-200;
+  }
+  .btn-ghost:hover {
+    border-color: var(--kea-orange);
+    color: var(--kea-orange);
+  }
+
+  .input {
+    background-color: var(--kea-surface);
+    border: 1px solid var(--kea-border);
+    color: var(--kea-heading);
+    @apply rounded-xl px-4 py-3 w-full transition-colors focus:outline-none shadow-sm;
+  }
+  .input::placeholder { color: var(--kea-muted); }
+  .input:focus { border-color: var(--kea-orange); }
+
+  .label {
+    color: var(--kea-subtle);
+    @apply text-xs font-bold uppercase tracking-wider mb-1 block;
+  }
+
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold;
+  }
+}

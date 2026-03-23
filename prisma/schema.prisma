@@ -1,0 +1,26 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Quote {
+  id           String   @id @default(uuid())
+  clientName   String
+  clientEmail  String?
+  clientCpfCnpj String?
+  serviceType  String   // WEB | BI
+  status       String   @default("PENDING") // PENDING | APPROVED | REJECTED | PAID
+  items        Json
+  setupValue   Decimal  @db.Decimal(10, 2)
+  monthlyValue Decimal  @db.Decimal(10, 2)
+  description  String?  @db.Text
+  asaasCustomerId String?
+  asaasPaymentId  String?
+  paymentLink     String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
