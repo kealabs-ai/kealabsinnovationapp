@@ -16,8 +16,9 @@ async function bootstrap() {
   const app = Fastify({ logger: false });
 
   await app.register(cors, {
-    origin: process.env.CORS_ORIGIN ?? '*',
+    origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',').map(s => s.trim()) : '*',
     methods: ['GET', 'POST', 'PATCH', 'DELETE'],
+    credentials: true,
   });
 
   await app.register(quoteRoutes, { prefix: '/api/v1' });

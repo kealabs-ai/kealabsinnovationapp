@@ -6,11 +6,16 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "dev:web": "cd web && npm run dev",
+    "dev:all": "npm run dev & npm run dev:web",
     "build": "tsc",
-    "start": "node dist/server.js"
+    "build:web": "cd web && npm run build",
+    "build:all": "npm run build && npm run build:web",
+    "start": "node dist/server.js",
+    "install:all": "npm install && cd web && npm install"
   },
   "dependencies": {
     "@fastify/cors": "^10.0.2",
+    "@google/generative-ai": "^0.24.1",
     "dotenv": "^16.4.7",
     "fastify": "^5.8.2",
     "socket.io": "^4.8.1"
