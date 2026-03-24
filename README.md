@@ -1,7 +1,3 @@
-<<<<<<< HEAD
-# kealabsinnovationapp
-Sistema de interno da empresa
-=======
 # KeaFlow — Ecossistema de Orçamentos Inteligente
 
 > KeaLabs · Dark Mode + Orange-600 · Powered by Gemini 2.5 Flash
@@ -127,4 +123,3 @@ socket.on('quote:updated', (quote) => console.log('Orçamento atualizado:', quot
 ### Recorrência
 - Suporte mensal: 10% do setup total
 - Hospedagem: Single R$ 12,99 | Premium R$ 17,99 | Business R$ 26,99
->>>>>>> e79714a (chore: initialize keaflow project)

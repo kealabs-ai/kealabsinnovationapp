@@ -1,24 +1,27 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { agentsApi } from './api';
+import type { AgentTone } from './api';
 
-export interface AgentProfile {
-  name: string;           // nome do agente
-  company: string;        // nome da empresa
-  tone: 'formal' | 'friendly' | 'technical' | 'consultive';
-  role: string;           // ex: "Consultor Comercial Sênior"
-  systemPrompt: string;   // instruções livres adicionais
-  services: string;       // quais serviços pode oferecer
-  objections: string;     // como lidar com objeções
-  closingStyle: string;   // estilo de fechamento
+export interface AgentProfileLocal {
+  id?: string;
+  name: string;
+  company: string;
+  tone: AgentTone;
+  role: string;
+  systemPrompt: string;
+  services: string;
+  objections: string;
+  closingStyle: string;
 }
 
-export const TONE_LABELS: Record<AgentProfile['tone'], string> = {
-  formal:      'Formal — linguagem corporativa e objetiva',
-  friendly:    'Amigável — próximo, descontraído e empático',
-  technical:   'Técnico — foco em detalhes e especificações',
-  consultive:  'Consultivo — faz perguntas, entende a dor antes de vender',
+export const TONE_LABELS: Record<AgentTone, string> = {
+  formal:     'Formal — linguagem corporativa e objetiva',
+  friendly:   'Amigável — próximo, descontraído e empático',
+  technical:  'Técnico — foco em detalhes e especificações',
+  consultive: 'Consultivo — faz perguntas, entende a dor antes de vender',
 };
 
-const DEFAULTS: AgentProfile = {
+const DEFAULTS: AgentProfileLocal = {
   name: 'Kea',
   company: 'KeaLabs',
   tone: 'consultive',
@@ -29,28 +32,82 @@ const DEFAULTS: AgentProfile = {
   closingStyle: 'Proponha um próximo passo concreto: agendar uma call, enviar uma proposta ou iniciar um projeto piloto.',
 };
 
-const KEY = 'keaflow-agent-profile';
+const CACHE_KEY = 'keaflow-agent-profile';
 
 export function useAgentProfile() {
-  const [profile, setProfile] = useState<AgentProfile>(() => {
+  const [profile, setProfile] = useState<AgentProfileLocal>(() => {
     try {
-      const stored = localStorage.getItem(KEY);
+      const stored = localStorage.getItem(CACHE_KEY);
       return stored ? { ...DEFAULTS, ...JSON.parse(stored) } : DEFAULTS;
-    } catch {
-      return DEFAULTS;
-    }
+    } catch { return DEFAULTS; }
   });
 
-  useEffect(() => {
-    localStorage.setItem(KEY, JSON.stringify(profile));
-  }, [profile]);
+  const agentIdRef = useRef<string | undefined>(profile.id);
 
-  const update = (patch: Partial<AgentProfile>) =>
-    setProfile((prev) => ({ ...prev, ...patch }));
+  // Carrega perfil ativo do servidor na montagem
+  useEffect(() => {
+    agentsApi.active().then((r) => {
+      const a = r.data.data;
+      const merged: AgentProfileLocal = {
+        id: a.id,
+        name: a.name,
+        company: a.company,
+        tone: a.tone,
+        role: a.role,
+        systemPrompt: a.system_prompt ?? '',
+        services: a.services,
+        objections: a.objections,
+        closingStyle: a.closing_style,
+      };
+      agentIdRef.current = a.id;
+      setProfile(merged);
+      localStorage.setItem(CACHE_KEY, JSON.stringify(merged));
+    }).catch(() => { /* usa cache local */ });
+  }, []);
+
+  const update = (patch: Partial<AgentProfileLocal>) => {
+    setProfile((prev) => {
+      const next = { ...prev, ...patch };
+      localStorage.setItem(CACHE_KEY, JSON.stringify(next));
+
+      const body = {
+        name: next.name,
+        company: next.company,
+        tone: next.tone,
+        role: next.role,
+        system_prompt: next.systemPrompt,
+        services: next.services,
+        objections: next.objections,
+        closing_style: next.closingStyle,
+        is_active: 1,
+      };
+
+      if (agentIdRef.current) {
+        agentsApi.update({ id: agentIdRef.current, ...body }).catch(() => {});
+      } else {
+        agentsApi.create(body).then((r) => {
+          agentIdRef.current = r.data.data.id;
+          setProfile((p) => ({ ...p, id: r.data.data.id }));
+        }).catch(() => {});
+      }
+
+      return next;
+    });
+  };
 
   const reset = () => {
-    setProfile(DEFAULTS);
-    localStorage.removeItem(KEY);
+    const next = { ...DEFAULTS, id: agentIdRef.current };
+    setProfile(next);
+    localStorage.setItem(CACHE_KEY, JSON.stringify(next));
+    if (agentIdRef.current) {
+      agentsApi.update({
+        id: agentIdRef.current,
+        name: DEFAULTS.name, company: DEFAULTS.company, tone: DEFAULTS.tone,
+        role: DEFAULTS.role, system_prompt: DEFAULTS.systemPrompt,
+        services: DEFAULTS.services, objections: DEFAULTS.objections,
+        closing_style: DEFAULTS.closingStyle, is_active: 1,
+      }).catch(() => {});
+    }
   };
 
   return { profile, update, reset, DEFAULTS };

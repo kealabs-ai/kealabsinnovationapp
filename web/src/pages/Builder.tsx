@@ -6,8 +6,8 @@ import {
   Workflow, MessageCircle, Rocket, Clock, Server, HardDrive, Cpu, Ban,
   Instagram, Link, Bot, Sparkles, BrainCircuit, Building2, BookOpen, Mic,
 } from 'lucide-react';
-import { api } from '../lib/api';
-import type { CreateQuoteDTO, IntegrationReadyPayload, HostingPlan, BISource, MiniSitePricingInput, AIAgentPricingInput, AgentPlan } from '../lib/api';
+import { quotesApi } from '../lib/api';
+import type { CreateQuoteDTO, Quote, HostingPlan, BISource, MiniSitePricingInput, AIAgentPricingInput, AgentPlan } from '../lib/api';
 import { PayloadModal } from '../components/PayloadModal';
 import { useSettings } from '../lib/useSettings';
 
@@ -37,7 +37,7 @@ export function Builder() {
   const navigate = useNavigate();
   const { settings } = useSettings();
   const [loading, setLoading]               = useState(false);
-  const [result, setResult]                 = useState<IntegrationReadyPayload | null>(null);
+  const [result, setResult]                 = useState<Quote | null>(null);
   const [clientName, setClientName]         = useState('');
   const [clientEmail, setClientEmail]       = useState('');
   const [clientCpfCnpj, setClientCpfCnpj]   = useState('');
@@ -130,7 +130,7 @@ export function Builder() {
               ? { serviceType: 'AI_AGENT', plan: agentPlan, agentCount, includeRAG, includeVoice, modules: buildModules() } as AIAgentPricingInput
               : { serviceType: 'BI', sources: Array.from(sources) as BISource[], complexity, modules: buildModules() },
       };
-      const r = await api.post('/quotes', dto);
+      const r = await quotesApi.create(dto);
       setResult(r.data.data);
     } finally {
       setLoading(false);
@@ -485,25 +485,13 @@ export function Builder() {
             <button onClick={() => navigate('/')} className="btn-ghost text-sm">Ver Dashboard →</button>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <div><p className="label">Setup</p><p className="text-2xl font-black" style={{ color: 'var(--kea-heading)' }}>{fmt(result.quote.pricing.setupValue)}</p></div>
-            <div><p className="label">Mensalidade</p><p className="text-2xl font-black text-orange-600">{fmt(result.quote.pricing.monthlyValue)}</p></div>
+            <div><p className="label">Setup</p><p className="text-2xl font-black" style={{ color: 'var(--kea-heading)' }}>{fmt(result.setup_value)}</p></div>
+            <div><p className="label">Mensalidade</p><p className="text-2xl font-black text-orange-600">{fmt(result.monthly_value)}</p></div>
           </div>
-          <div>
-            <p className="label">Breakdown</p>
-            <div className="flex flex-col gap-1 mt-1">
-              {Object.entries(result.quote.pricing.breakdown).map(([k, v]) => (
-                <div key={k} className="flex justify-between text-sm">
-                  <span style={{ color: 'var(--kea-body)' }} className="capitalize">{k.replace(/([A-Z])/g, ' $1')}</span>
-                  <span className="font-bold" style={{ color: 'var(--kea-heading)' }}>{typeof v === 'number' ? fmt(v) : v}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-          <button onClick={() => setResult(result)} className="btn-ghost text-sm">Ver Payloads de Integração</button>
         </div>
       )}
 
-      <PayloadModal payload={result} onClose={() => setResult(null)} />
+
     </div>
   );
 }

@@ -1,69 +1,104 @@
 import { useState, useRef, useEffect } from 'react';
 import { Send, Bot, User, Loader2, Trash2 } from 'lucide-react';
-import { api } from '../lib/api';
+import { chatApi, agentsApi } from '../lib/api';
+import type { ChatMessage, ChatSession } from '../lib/api';
 import { useAgentProfile } from '../lib/useAgentProfile';
 
-interface Message {
-  role: 'user' | 'model';
-  text: string;
-  ts: string;
-}
-
-const STORAGE_KEY = 'keaflow-chat-history';
-
-function loadHistory(): Message[] {
-  try {
-    const s = localStorage.getItem(STORAGE_KEY);
-    return s ? JSON.parse(s) : [];
-  } catch { return []; }
-}
+const SESSION_KEY = 'keaflow-chat-session-id';
 
 export function Chat() {
   const { profile } = useAgentProfile();
-  const [messages, setMessages] = useState<Message[]>(loadHistory);
+  const [session, setSession]   = useState<ChatSession | null>(null);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput]       = useState('');
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState('');
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef  = useRef<HTMLTextAreaElement>(null);
 
+  // Inicializa ou retoma sessão
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
+    const savedId = localStorage.getItem(SESSION_KEY);
+    if (savedId) {
+      chatApi.getSession(savedId)
+        .then((r) => {
+          setSession(r.data.data);
+          return chatApi.getMessages(savedId);
+        })
+        .then((r) => setMessages(r.data.data))
+        .catch(() => createSession());
+    } else {
+      createSession();
+    }
+  }, []);
+
+  useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  const createSession = async () => {
+    try {
+      const r = await chatApi.createSession({
+        agent_name: profile.name,
+        agent_role: profile.role,
+        agent_tone: profile.tone,
+      });
+      setSession(r.data.data);
+      localStorage.setItem(SESSION_KEY, r.data.data.id);
+      setMessages([]);
+    } catch {
+      setError('Não foi possível iniciar a sessão de chat.');
+    }
+  };
+
   const send = async () => {
     const text = input.trim();
-    if (!text || loading) return;
+    if (!text || loading || !session) return;
 
-    const userMsg: Message = { role: 'user', text, ts: new Date().toISOString() };
-    const next = [...messages, userMsg];
-    setMessages(next);
     setInput('');
     setError('');
     setLoading(true);
 
+    // Salva mensagem do usuário
     try {
-      const { data } = await api.post('/chat', {
-        profile,
-        history: next.slice(0, -1).map((m) => ({ role: m.role, text: m.text })),
-        message: text,
-      });
-      setMessages((prev) => [
-        ...prev,
-        { role: 'model', text: data.reply, ts: new Date().toISOString() },
-      ]);
+      const userRes = await chatApi.sendMessage(session.id, 'user', text);
+      setMessages((prev) => [...prev, userRes.data.data]);
     } catch {
-      setError('Erro ao conectar com o agente. Verifique se o backend está rodando.');
+      setError('Erro ao enviar mensagem.');
+      setLoading(false);
+      return;
+    }
+
+    // Busca resposta do agente via /api/chat/messages com role=model
+    // O backend deve processar e retornar a resposta do modelo
+    try {
+      // Envia para o endpoint de IA (reutiliza a rota de mensagens com processamento)
+      const history = messages.map((m) => ({ role: m.role, content: m.content }));
+      const aiRes = await chatApi.sendMessage(session.id, 'model', text);
+      // Se o backend retornar a resposta do modelo diretamente:
+      if (aiRes.data.data.role === 'model') {
+        setMessages((prev) => [...prev, aiRes.data.data]);
+      } else {
+        // Busca mensagens atualizadas da sessão
+        const updated = await chatApi.getMessages(session.id);
+        setMessages(updated.data.data);
+      }
+      void history; // usado pelo backend via session_id
+    } catch {
+      setError('Erro ao obter resposta do agente.');
     } finally {
       setLoading(false);
       setTimeout(() => inputRef.current?.focus(), 50);
     }
   };
 
-  const clear = () => {
+  const clear = async () => {
+    if (!session) return;
+    await chatApi.deleteSession(session.id).catch(() => {});
+    localStorage.removeItem(SESSION_KEY);
     setMessages([]);
-    localStorage.removeItem(STORAGE_KEY);
+    setSession(null);
+    createSession();
   };
 
   const onKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -92,8 +127,7 @@ export function Chat() {
           </div>
         </div>
         {messages.length > 0 && (
-          <button onClick={clear} className="btn-ghost flex items-center gap-1.5 text-xs"
-            title="Limpar conversa">
+          <button onClick={clear} className="btn-ghost flex items-center gap-1.5 text-xs" title="Limpar conversa">
             <Trash2 size={13} /> Limpar
           </button>
         )}
@@ -128,25 +162,23 @@ export function Chat() {
           </div>
         )}
 
-        {messages.map((m, i) => (
-          <div key={i} className={`flex gap-2.5 ${m.role === 'user' ? 'flex-row-reverse' : ''}`}>
+        {messages.map((m) => (
+          <div key={m.id} className={`flex gap-2.5 ${m.role === 'user' ? 'flex-row-reverse' : ''}`}>
             <div className={`w-7 h-7 rounded-xl flex-shrink-0 flex items-center justify-center mt-0.5 ${
               m.role === 'model'
                 ? 'bg-gradient-to-br from-orange-600 to-orange-400'
                 : 'bg-gradient-to-br from-slate-600 to-slate-500'
             }`}>
-              {m.role === 'model'
-                ? <Bot size={14} className="text-white" />
-                : <User size={14} className="text-white" />}
+              {m.role === 'model' ? <Bot size={14} className="text-white" /> : <User size={14} className="text-white" />}
             </div>
             <div className={`flex flex-col gap-1 max-w-[78%] ${m.role === 'user' ? 'items-end' : ''}`}>
               <div className="px-4 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap"
                 style={m.role === 'model'
                   ? { backgroundColor: 'var(--kea-surface)', border: '1px solid var(--kea-border)', color: 'var(--kea-heading)' }
                   : { backgroundColor: '#EA580C', color: '#fff' }}>
-                {m.text}
+                {m.content}
               </div>
-              <span className="text-[10px] px-1" style={{ color: 'var(--kea-subtle)' }}>{fmt(m.ts)}</span>
+              <span className="text-[10px] px-1" style={{ color: 'var(--kea-subtle)' }}>{fmt(m.sent_at)}</span>
             </div>
           </div>
         ))}

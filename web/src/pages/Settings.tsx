@@ -1,5 +1,6 @@
 import { useSettings } from '../lib/useSettings';
 import { useAgentProfile, TONE_LABELS } from '../lib/useAgentProfile';
+import type { AgentProfileLocal } from '../lib/useAgentProfile';
 import { RotateCcw, Save, Bot } from 'lucide-react';
 import { useState } from 'react';
 import type React from 'react';
@@ -36,7 +37,7 @@ export function Settings() {
   );
 
   // ── Agent helpers ────────────────────────────────────────────────────────────
-  const textField = (label: string, key: keyof typeof profile, placeholder = '') => (
+  const textField = (label: string, key: keyof AgentProfileLocal, placeholder = '') => (
     <div key={key} className="flex flex-col gap-1">
       <label className="label">{label}</label>
       <input className="input" placeholder={placeholder}
@@ -45,7 +46,7 @@ export function Settings() {
     </div>
   );
 
-  const textArea = (label: string, key: keyof typeof profile, placeholder = '') => (
+  const textArea = (label: string, key: keyof AgentProfileLocal, placeholder = '') => (
     <div key={key} className="flex flex-col gap-1">
       <label className="label">{label}</label>
       <textarea rows={3} className="input resize-none" placeholder={placeholder}
