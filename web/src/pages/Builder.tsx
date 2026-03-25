@@ -8,7 +8,6 @@ import {
 } from 'lucide-react';
 import { quotesApi } from '../lib/api';
 import type { CreateQuoteDTO, Quote, HostingPlan, BISource, MiniSitePricingInput, AIAgentPricingInput, AgentPlan } from '../lib/api';
-import { PayloadModal } from '../components/PayloadModal';
 import { useSettings } from '../lib/useSettings';
 
 const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -24,12 +23,6 @@ function maskPhone(v: string) {
 const cardStyle = (active: boolean): React.CSSProperties => ({
   backgroundColor: active ? '#FFF1E6' : 'var(--kea-surface)',
   borderColor:     active ? '#EA580C'  : 'var(--kea-border)',
-  color:           'var(--kea-heading)',
-});
-
-const cardDarkStyle = (active: boolean): React.CSSProperties => ({
-  backgroundColor: active ? 'rgba(234,88,12,0.1)' : 'var(--kea-surface)',
-  borderColor:     active ? '#EA580C' : 'var(--kea-border)',
   color:           'var(--kea-heading)',
 });
 
