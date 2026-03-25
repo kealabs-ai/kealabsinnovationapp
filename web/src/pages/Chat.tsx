@@ -59,7 +59,6 @@ export function Chat() {
     setError('');
     setLoading(true);
 
-    // Adiciona mensagem do usuário localmente para feedback imediato
     const optimisticUser: ChatMessage = {
       id: Date.now(),
       session_id: session.id,
@@ -70,12 +69,14 @@ export function Chat() {
     setMessages((prev) => [...prev, optimisticUser]);
 
     try {
-      // Uma única chamada — o backend salva a msg do usuário, chama Gemini e retorna a resposta do modelo
       const res = await chatApi.sendMessage(session.id, 'user', text);
-      const aiMsg = res.data;
-      // Substitui a mensagem otimista pela confirmada e adiciona a resposta do modelo
-      const confirmed = await chatApi.getMessages(session.id);
-      setMessages(Array.isArray(confirmed.data) ? confirmed.data : [optimisticUser, aiMsg]);
+      const payload = res.data as unknown as { user: ChatMessage; model: ChatMessage | null };
+
+      setMessages((prev) => [
+        ...prev.filter((m) => m.id !== optimisticUser.id),
+        payload.user,
+        ...(payload.model ? [payload.model] : []),
+      ]);
     } catch {
       setError('Erro ao enviar mensagem.');
       setMessages((prev) => prev.filter((m) => m.id !== optimisticUser.id));

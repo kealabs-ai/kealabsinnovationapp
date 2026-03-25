@@ -115,12 +115,13 @@ export async function chatRoutes(app: FastifyInstance) {
         sessionMsgs.push(aiMsg);
         messages.set(session_id, sessionMsgs);
 
-        return reply.send(aiMsg);
-      } catch {
-        return reply.send(userMsg);
+        return reply.send({ user: userMsg, model: aiMsg });
+      } catch (err) {
+        const errMsg = err instanceof Error ? err.message : 'Gemini error';
+        return reply.status(500).send({ error: errMsg });
       }
     }
 
-    return reply.send(userMsg);
+    return reply.send({ user: userMsg, model: null });
   });
 }

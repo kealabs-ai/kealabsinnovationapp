@@ -23,11 +23,11 @@ api.interceptors.response.use(
     console.log('data:', response.data);
     console.groupEnd();
 
-    // Normaliza respostas: se a API retornar { data: [...] } ou { items: [...] }, extrai o array
+    // Normaliza respostas de lista: extrai array se vier dentro de { data, items ou results }
     const d = response.data;
-    if (d && typeof d === 'object' && !Array.isArray(d)) {
-      if (Array.isArray(d.data))    response.data = d.data;
-      else if (Array.isArray(d.items))   response.data = d.items;
+    if (d && typeof d === 'object' && !Array.isArray(d) && !('user' in d) && !('model' in d)) {
+      if (Array.isArray(d.data))     response.data = d.data;
+      else if (Array.isArray(d.items))    response.data = d.items;
       else if (Array.isArray(d.results)) response.data = d.results;
     }
     return response;
