@@ -7,16 +7,38 @@ export const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
-// Normaliza respostas: se a API retornar { data: [...] } ou { items: [...] }, extrai o array
-api.interceptors.response.use((response) => {
-  const d = response.data;
-  if (d && typeof d === 'object' && !Array.isArray(d)) {
-    if (Array.isArray(d.data))  response.data = d.data;
-    else if (Array.isArray(d.items))  response.data = d.items;
-    else if (Array.isArray(d.results)) response.data = d.results;
-  }
-  return response;
+api.interceptors.request.use((config) => {
+  const url = `${config.baseURL}${config.url}`;
+  console.group(`%c⬆ ${config.method?.toUpperCase()} ${url}`, 'color:#EA580C;font-weight:bold');
+  if (config.data) console.log('payload:', config.data);
+  console.groupEnd();
+  return config;
 });
+
+api.interceptors.response.use(
+  (response) => {
+    const url = `${response.config.baseURL}${response.config.url}`;
+    console.group(`%c⬇ ${response.status} ${url}`, 'color:#16A34A;font-weight:bold');
+    console.log('data:', response.data);
+    console.groupEnd();
+
+    // Normaliza respostas: se a API retornar { data: [...] } ou { items: [...] }, extrai o array
+    const d = response.data;
+    if (d && typeof d === 'object' && !Array.isArray(d)) {
+      if (Array.isArray(d.data))    response.data = d.data;
+      else if (Array.isArray(d.items))   response.data = d.items;
+      else if (Array.isArray(d.results)) response.data = d.results;
+    }
+    return response;
+  },
+  (error) => {
+    const url = error.config ? `${error.config.baseURL}${error.config.url}` : 'unknown';
+    console.group(`%c✖ ERRO ${error.response?.status ?? ''} ${url}`, 'color:#DC2626;font-weight:bold');
+    console.log('response:', error.response?.data ?? error.message);
+    console.groupEnd();
+    return Promise.reject(error);
+  },
+);
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
