@@ -1,6 +1,11 @@
 import axios from 'axios';
 
-export const BASE_URL = import.meta.env.VITE_API_URL as string;
+export const BASE_URL = (import.meta.env.VITE_API_URL as string | undefined)
+  ?? 'https://srv1023256.hstgr.cloud';
+
+if (!import.meta.env.VITE_API_URL) {
+  console.warn('[KeaFlow] VITE_API_URL não definida — usando fallback:', BASE_URL);
+}
 
 export const api = axios.create({
   baseURL: BASE_URL,
