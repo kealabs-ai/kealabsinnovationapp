@@ -59,26 +59,26 @@ export function Chat() {
     setError('');
     setLoading(true);
 
-    // Salva mensagem do usuário
-    try {
-      const userRes = await chatApi.sendMessage(session.id, 'user', text);
-      setMessages((prev) => [...prev, userRes.data]);
-    } catch {
-      setError('Erro ao enviar mensagem.');
-      setLoading(false);
-      return;
-    }
+    // Adiciona mensagem do usuário localmente para feedback imediato
+    const optimisticUser: ChatMessage = {
+      id: Date.now(),
+      session_id: session.id,
+      role: 'user',
+      content: text,
+      sent_at: new Date().toISOString(),
+    };
+    setMessages((prev) => [...prev, optimisticUser]);
 
     try {
-      const aiRes = await chatApi.sendMessage(session.id, 'model', text);
-      if (aiRes.data.role === 'model') {
-        setMessages((prev) => [...prev, aiRes.data]);
-      } else {
-        const updated = await chatApi.getMessages(session.id);
-        setMessages(updated.data);
-      }
+      // Uma única chamada — o backend salva a msg do usuário, chama Gemini e retorna a resposta do modelo
+      const res = await chatApi.sendMessage(session.id, 'user', text);
+      const aiMsg = res.data;
+      // Substitui a mensagem otimista pela confirmada e adiciona a resposta do modelo
+      const confirmed = await chatApi.getMessages(session.id);
+      setMessages(Array.isArray(confirmed.data) ? confirmed.data : [optimisticUser, aiMsg]);
     } catch {
-      setError('Erro ao obter resposta do agente.');
+      setError('Erro ao enviar mensagem.');
+      setMessages((prev) => prev.filter((m) => m.id !== optimisticUser.id));
     } finally {
       setLoading(false);
       setTimeout(() => inputRef.current?.focus(), 50);
