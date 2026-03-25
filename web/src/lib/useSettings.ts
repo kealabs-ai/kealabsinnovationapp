@@ -103,7 +103,8 @@ export function useSettings() {
   // Carrega do servidor na montagem
   useEffect(() => {
     settingsApi.list().then((r) => {
-      const merged = { ...DEFAULTS, ...fromApi(r.data) };
+      const rows = Array.isArray(r.data) ? r.data : [];
+      const merged = { ...DEFAULTS, ...fromApi(rows) };
       setSettings(merged);
       localStorage.setItem(CACHE_KEY, JSON.stringify(merged));
     }).catch(() => { /* usa cache local */ });

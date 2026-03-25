@@ -10,7 +10,11 @@ export function Dashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    quotesApi.list().then((r) => { setQuotes(r.data ?? []); setLoading(false); }).catch(() => setLoading(false));
+    quotesApi.list().then((r) => {
+      const data = Array.isArray(r.data) ? r.data : [];
+      setQuotes(data);
+      setLoading(false);
+    }).catch(() => setLoading(false));
   }, []);
 
   const changeStatus = async (id: string, status: Quote['status']) =>
