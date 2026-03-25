@@ -25,7 +25,10 @@ export function Chat() {
           setSession(r.data);
           return chatApi.getMessages(savedId);
         })
-        .then((r) => setMessages(r.data))
+        .then((r) => {
+          const msgs = Array.isArray(r.data) ? r.data.filter((m) => m?.role) : [];
+          setMessages(msgs);
+        })
         .catch(() => createSession());
     } else {
       createSession();
@@ -70,12 +73,16 @@ export function Chat() {
 
     try {
       const res = await chatApi.sendMessage(session.id, 'user', text);
-      const payload = res.data as unknown as { user: ChatMessage; model: ChatMessage | null };
+      const raw = res.data as unknown as { user: ChatMessage; model: ChatMessage | null };
+
+      const confirmed: ChatMessage[] = [
+        ...(raw?.user?.role ? [raw.user] : []),
+        ...(raw?.model?.role ? [raw.model] : []),
+      ];
 
       setMessages((prev) => [
         ...prev.filter((m) => m.id !== optimisticUser.id),
-        payload.user,
-        ...(payload.model ? [payload.model] : []),
+        ...(confirmed.length > 0 ? confirmed : [optimisticUser]),
       ]);
     } catch {
       setError('Erro ao enviar mensagem.');
