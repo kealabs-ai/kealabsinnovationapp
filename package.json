@@ -7,9 +7,10 @@
     "dev": "tsx watch src/server.ts",
     "dev:web": "cd web && npm run dev",
     "dev:all": "npm run dev & npm run dev:web",
-    "build": "tsc",
+    "build": "cd web && npm install && npm run build",
+    "build:api": "tsc",
     "build:web": "cd web && npm run build",
-    "build:all": "npm run build && npm run build:web",
+    "build:all": "npm run build:api && npm run build:web",
     "start": "npm run build:all && node dist/server.js",
     "install:all": "npm install && cd web && npm install"
   },
