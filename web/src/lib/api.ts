@@ -122,11 +122,11 @@ export interface IntegrationReadyPayload {
 // ─── CLIENTS ──────────────────────────────────────────────────────────────────
 
 export const clientsApi = {
-  list:   ()                                    => api.get<{ data: Client[] }>('/clients'),
-  get:    (id: string)                          => api.get<{ data: Client }>(`/clients/${id}`),
-  create: (body: Omit<Client, 'id' | 'created_at' | 'updated_at'>) => api.post<{ data: Client }>('/clients', body),
-  update: (body: Partial<Client> & { id: string }) => api.post<{ data: Client }>('/clients/update', body),
-  delete: (id: string)                          => api.post('/clients/delete', { id }),
+  list:   ()                                                           => api.get<Client[]>('/clients'),
+  get:    (id: string)                                                 => api.get<Client>(`/clients/${id}`),
+  create: (body: Omit<Client, 'id' | 'created_at' | 'updated_at'>)   => api.post<Client>('/clients', body),
+  update: (body: Partial<Client> & { id: string })                    => api.post<Client>('/clients/update', body),
+  delete: (id: string)                                                 => api.post('/clients/delete', { id }),
 };
 
 // ─── QUOTES ───────────────────────────────────────────────────────────────────
@@ -140,47 +140,47 @@ export interface CreateQuoteDTO {
 }
 
 export const quotesApi = {
-  list:         ()                                          => api.get<{ data: Quote[] }>('/quotes'),
-  get:          (id: string)                               => api.get<{ data: Quote }>(`/quotes/${id}`),
-  history:      (id: string)                               => api.get<{ data: QuoteStatusHistory[] }>(`/quotes/${id}/history`),
-  metricsByService: ()                                     => api.get('/quotes/metrics/by-service'),
-  metricsMonthly:   ()                                     => api.get('/quotes/metrics/monthly'),
-  create:       (body: CreateQuoteDTO)                     => api.post<{ data: Quote }>('/quotes', body),
-  updateStatus: (id: string, status: QuoteStatus, note?: string) => api.post('/quotes/update-status', { id, status, note }),
-  updateAsaas:  (id: string, asaas_customer_id: string, asaas_charge_id: string) =>
-                  api.post('/quotes/update-asaas', { id, asaas_customer_id, asaas_charge_id }),
-  delete:       (id: string)                               => api.post('/quotes/delete', { id }),
+  list:             ()                                                          => api.get<Quote[]>('/quotes'),
+  get:              (id: string)                                                => api.get<Quote>(`/quotes/${id}`),
+  history:          (id: string)                                                => api.get<QuoteStatusHistory[]>(`/quotes/${id}/history`),
+  metricsByService: ()                                                          => api.get('/quotes/metrics/by-service'),
+  metricsMonthly:   ()                                                          => api.get('/quotes/metrics/monthly'),
+  create:           (body: CreateQuoteDTO)                                      => api.post<Quote>('/quotes', body),
+  updateStatus:     (id: string, status: QuoteStatus, note?: string)           => api.post('/quotes/update-status', { id, status, note }),
+  updateAsaas:      (id: string, asaas_customer_id: string, asaas_charge_id: string) =>
+                      api.post('/quotes/update-asaas', { id, asaas_customer_id, asaas_charge_id }),
+  delete:           (id: string)                                                => api.post('/quotes/delete', { id }),
 };
 
 // ─── CHAT ─────────────────────────────────────────────────────────────────────
 
 export const chatApi = {
-  listSessions:   ()                                                  => api.get<{ data: ChatSession[] }>('/chat/sessions'),
-  getSession:     (id: string)                                        => api.get<{ data: ChatSession }>(`/chat/sessions/${id}`),
-  getMessages:    (id: string)                                        => api.get<{ data: ChatMessage[] }>(`/chat/sessions/${id}/messages`),
-  createSession:  (body: Partial<ChatSession>)                        => api.post<{ data: ChatSession }>('/chat/sessions', body),
-  updateSession:  (body: Partial<ChatSession> & { id: string })       => api.post<{ data: ChatSession }>('/chat/sessions/update', body),
-  deleteSession:  (id: string)                                        => api.post('/chat/sessions/delete', { id }),
-  sendMessage:    (session_id: string, role: 'user' | 'model', content: string) =>
-                    api.post<{ data: ChatMessage }>('/chat/messages', { session_id, role, content }),
+  listSessions:  ()                                                        => api.get<ChatSession[]>('/chat/sessions'),
+  getSession:    (id: string)                                              => api.get<ChatSession>(`/chat/sessions/${id}`),
+  getMessages:   (id: string)                                              => api.get<ChatMessage[]>(`/chat/sessions/${id}/messages`),
+  createSession: (body: Partial<ChatSession>)                              => api.post<ChatSession>('/chat/sessions', body),
+  updateSession: (body: Partial<ChatSession> & { id: string })            => api.post<ChatSession>('/chat/sessions/update', body),
+  deleteSession: (id: string)                                              => api.post('/chat/sessions/delete', { id }),
+  sendMessage:   (session_id: string, role: 'user' | 'model', content: string) =>
+                   api.post<ChatMessage>('/chat/messages', { session_id, role, content }),
 };
 
 // ─── SETTINGS ─────────────────────────────────────────────────────────────────
 
 export const settingsApi = {
-  list:   ()                                                    => api.get<{ data: SystemSetting[] }>('/settings'),
-  get:    (key: string)                                         => api.get<{ data: SystemSetting }>(`/settings/${key}`),
-  upsert: (setting_key: string, setting_value: string)         => api.post('/settings/upsert', { setting_key, setting_value }),
-  delete: (setting_key: string)                                 => api.post('/settings/delete', { setting_key }),
+  list:   ()                                             => api.get<SystemSetting[]>('/settings'),
+  get:    (key: string)                                  => api.get<SystemSetting>(`/settings/${key}`),
+  upsert: (setting_key: string, setting_value: string)  => api.post('/settings/upsert', { setting_key, setting_value }),
+  delete: (setting_key: string)                          => api.post('/settings/delete', { setting_key }),
 };
 
 // ─── AGENTS ───────────────────────────────────────────────────────────────────
 
 export const agentsApi = {
-  list:   ()                                                          => api.get<{ data: AgentProfile[] }>('/agents'),
-  active: ()                                                          => api.get<{ data: AgentProfile }>('/agents/active'),
-  get:    (id: string)                                                => api.get<{ data: AgentProfile }>(`/agents/${id}`),
-  create: (body: Omit<AgentProfile, 'id' | 'created_at' | 'updated_at'>) => api.post<{ data: AgentProfile }>('/agents', body),
-  update: (body: Partial<AgentProfile> & { id: string })             => api.post<{ data: AgentProfile }>('/agents/update', body),
-  delete: (id: string)                                                => api.post('/agents/delete', { id }),
+  list:   ()                                                               => api.get<AgentProfile[]>('/agents'),
+  active: ()                                                               => api.get<AgentProfile>('/agents/active'),
+  get:    (id: string)                                                     => api.get<AgentProfile>(`/agents/${id}`),
+  create: (body: Omit<AgentProfile, 'id' | 'created_at' | 'updated_at'>) => api.post<AgentProfile>('/agents', body),
+  update: (body: Partial<AgentProfile> & { id: string })                  => api.post<AgentProfile>('/agents/update', body),
+  delete: (id: string)                                                     => api.post('/agents/delete', { id }),
 };

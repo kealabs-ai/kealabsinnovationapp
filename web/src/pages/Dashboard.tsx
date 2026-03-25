@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { quotesApi } from '../lib/api';
-import { socket } from '../lib/socket';
 import type { Quote } from '../lib/api';
 import { StatusBadge } from '../components/StatusBadge';
 
@@ -9,16 +8,9 @@ const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', curren
 export function Dashboard() {
   const [quotes, setQuotes]   = useState<Quote[]>([]);
   const [loading, setLoading] = useState(true);
-  const [liveId, setLiveId]   = useState<string | null>(null);
 
   useEffect(() => {
-    quotesApi.list().then((r) => { setQuotes(r.data.data ?? []); setLoading(false); }).catch(() => setLoading(false));
-    const flash = (id: string) => { setLiveId(id); setTimeout(() => setLiveId(null), 3000); };
-    const onCreated = (q: Quote) => { setQuotes((p) => [q, ...p]); flash(q.id); };
-    const onUpdated = (q: Quote) => { setQuotes((p) => p.map((x) => (x.id === q.id ? q : x))); flash(q.id); };
-    socket.on('quote:created', onCreated);
-    socket.on('quote:updated', onUpdated);
-    return () => { socket.off('quote:created', onCreated); socket.off('quote:updated', onUpdated); };
+    quotesApi.list().then((r) => { setQuotes(r.data ?? []); setLoading(false); }).catch(() => setLoading(false));
   }, []);
 
   const changeStatus = async (id: string, status: Quote['status']) =>
@@ -64,8 +56,7 @@ export function Dashboard() {
       ) : (
         <div className="flex flex-col gap-3">
           {quotes.map((q) => (
-            <div key={q.id} className="card flex flex-col md:flex-row md:items-center gap-4 transition-all duration-500"
-              style={liveId === q.id ? { borderColor: '#EA580C', boxShadow: '0 4px 24px rgba(234,88,12,0.12)' } : {}}>
+            <div key={q.id} className="card flex flex-col md:flex-row md:items-center gap-4">
               <div className="flex-1 flex flex-col gap-1">
                 <div className="flex items-center gap-3 flex-wrap">
                   <span className="font-bold" style={{ color: 'var(--kea-heading)' }}>{q.clientName ?? q.client_id}</span>
@@ -74,9 +65,6 @@ export function Dashboard() {
                     style={{ background: '#FFF1E6', border: '1px solid #FED7AA' }}>
                     {q.service_type}
                   </span>
-                  {liveId === q.id && (
-                    <span className="badge animate-pulse" style={{ background: 'rgba(234,88,12,0.1)', color: '#EA580C', border: '1px solid rgba(234,88,12,0.3)' }}>● live</span>
-                  )}
                 </div>
                 <div className="flex gap-4 text-sm" style={{ color: 'var(--kea-body)' }}>
                   <span>Setup: <strong style={{ color: 'var(--kea-heading)' }}>{fmt(q.setup_value)}</strong></span>

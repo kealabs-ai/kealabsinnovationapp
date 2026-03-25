@@ -47,7 +47,7 @@ export function useAgentProfile() {
   // Carrega perfil ativo do servidor na montagem
   useEffect(() => {
     agentsApi.active().then((r) => {
-      const a = r.data.data;
+      const a = r.data;
       const merged: AgentProfileLocal = {
         id: a.id,
         name: a.name,
@@ -86,8 +86,8 @@ export function useAgentProfile() {
         agentsApi.update({ id: agentIdRef.current, ...body }).catch(() => {});
       } else {
         agentsApi.create(body).then((r) => {
-          agentIdRef.current = r.data.data.id;
-          setProfile((p) => ({ ...p, id: r.data.data.id }));
+          agentIdRef.current = r.data.id;
+          setProfile((p) => ({ ...p, id: r.data.id }));
         }).catch(() => {});
       }
 

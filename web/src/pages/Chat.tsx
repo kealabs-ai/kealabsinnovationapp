@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Send, Bot, User, Loader2, Trash2 } from 'lucide-react';
-import { chatApi, agentsApi } from '../lib/api';
+import { chatApi } from '../lib/api';
 import type { ChatMessage, ChatSession } from '../lib/api';
 import { useAgentProfile } from '../lib/useAgentProfile';
 
@@ -22,10 +22,10 @@ export function Chat() {
     if (savedId) {
       chatApi.getSession(savedId)
         .then((r) => {
-          setSession(r.data.data);
+          setSession(r.data);
           return chatApi.getMessages(savedId);
         })
-        .then((r) => setMessages(r.data.data))
+        .then((r) => setMessages(r.data))
         .catch(() => createSession());
     } else {
       createSession();
@@ -43,8 +43,8 @@ export function Chat() {
         agent_role: profile.role,
         agent_tone: profile.tone,
       });
-      setSession(r.data.data);
-      localStorage.setItem(SESSION_KEY, r.data.data.id);
+      setSession(r.data);
+      localStorage.setItem(SESSION_KEY, r.data.id);
       setMessages([]);
     } catch {
       setError('Não foi possível iniciar a sessão de chat.');
@@ -62,28 +62,21 @@ export function Chat() {
     // Salva mensagem do usuário
     try {
       const userRes = await chatApi.sendMessage(session.id, 'user', text);
-      setMessages((prev) => [...prev, userRes.data.data]);
+      setMessages((prev) => [...prev, userRes.data]);
     } catch {
       setError('Erro ao enviar mensagem.');
       setLoading(false);
       return;
     }
 
-    // Busca resposta do agente via /api/chat/messages com role=model
-    // O backend deve processar e retornar a resposta do modelo
     try {
-      // Envia para o endpoint de IA (reutiliza a rota de mensagens com processamento)
-      const history = messages.map((m) => ({ role: m.role, content: m.content }));
       const aiRes = await chatApi.sendMessage(session.id, 'model', text);
-      // Se o backend retornar a resposta do modelo diretamente:
-      if (aiRes.data.data.role === 'model') {
-        setMessages((prev) => [...prev, aiRes.data.data]);
+      if (aiRes.data.role === 'model') {
+        setMessages((prev) => [...prev, aiRes.data]);
       } else {
-        // Busca mensagens atualizadas da sessão
         const updated = await chatApi.getMessages(session.id);
-        setMessages(updated.data.data);
+        setMessages(updated.data);
       }
-      void history; // usado pelo backend via session_id
     } catch {
       setError('Erro ao obter resposta do agente.');
     } finally {

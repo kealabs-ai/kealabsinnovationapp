@@ -131,7 +131,7 @@ export function Builder() {
               : { serviceType: 'BI', sources: Array.from(sources) as BISource[], complexity, modules: buildModules() },
       };
       const r = await quotesApi.create(dto);
-      setResult(r.data.data);
+      setResult(r.data);
     } finally {
       setLoading(false);
     }
