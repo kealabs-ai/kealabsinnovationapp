@@ -47,7 +47,8 @@ export function useAgentProfile() {
   // Carrega perfil ativo do servidor na montagem
   useEffect(() => {
     agentsApi.active().then((r) => {
-      const a = r.data;
+      const a = Array.isArray(r.data) ? r.data[0] : r.data;
+      if (!a) return;
       const merged: AgentProfileLocal = {
         id: a.id,
         name: a.name,

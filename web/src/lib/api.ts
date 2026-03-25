@@ -7,6 +7,17 @@ export const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
+// Normaliza respostas: se a API retornar { data: [...] } ou { items: [...] }, extrai o array
+api.interceptors.response.use((response) => {
+  const d = response.data;
+  if (d && typeof d === 'object' && !Array.isArray(d)) {
+    if (Array.isArray(d.data))  response.data = d.data;
+    else if (Array.isArray(d.items))  response.data = d.items;
+    else if (Array.isArray(d.results)) response.data = d.results;
+  }
+  return response;
+});
+
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
 export type ServiceType = 'WEB' | 'BI' | 'MINI_SITE' | 'AI_AGENT';
