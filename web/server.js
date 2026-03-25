@@ -1,28 +1,35 @@
 import http from 'http';
-import fs   from 'fs';
+import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const PORT      = process.env.PORT || 3000;
-const DIST      = path.join(__dirname, 'dist');
+const PORT = process.env.PORT || 3000;
+const DIST = path.join(__dirname, 'dist');
 
-const MIME = {
-  '.html': 'text/html; charset=utf-8',
-  '.js':   'application/javascript',
-  '.mjs':  'application/javascript',
-  '.css':  'text/css',
-  '.svg':  'image/svg+xml',
-  '.png':  'image/png',
-  '.jpg':  'image/jpeg',
-  '.ico':  'image/x-icon',
-  '.json': 'application/json',
-  '.woff': 'font/woff',
-  '.woff2': 'font/woff2',
-};
+function getMime(filePath) {
+  const ext = filePath.split('.').pop().toLowerCase();
+  const types = {
+    'html': 'text/html; charset=utf-8',
+    'js':   'application/javascript; charset=utf-8',
+    'mjs':  'application/javascript; charset=utf-8',
+    'css':  'text/css; charset=utf-8',
+    'svg':  'image/svg+xml',
+    'png':  'image/png',
+    'jpg':  'image/jpeg',
+    'jpeg': 'image/jpeg',
+    'ico':  'image/x-icon',
+    'json': 'application/json',
+    'woff': 'font/woff',
+    'woff2':'font/woff2',
+    'ttf':  'font/ttf',
+    'map':  'application/json',
+  };
+  return types[ext] || 'application/octet-stream';
+}
 
 const server = http.createServer((req, res) => {
-  // Redireciona HTTP → HTTPS quando atrás do proxy da Hostinger
+  // HTTP → HTTPS redirect via Hostinger proxy header
   const proto = req.headers['x-forwarded-proto'];
   if (proto && proto !== 'https') {
     res.writeHead(301, { Location: `https://${req.headers.host}${req.url}` });
@@ -33,12 +40,12 @@ const server = http.createServer((req, res) => {
   const urlPath = req.url.split('?')[0];
   let filePath  = path.join(DIST, urlPath);
 
+  // SPA fallback
   if (!fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
     filePath = path.join(DIST, 'index.html');
   }
 
-  const ext     = path.extname(filePath);
-  const mime    = MIME[ext] || 'application/octet-stream';
+  const mime    = getMime(filePath);
   const content = fs.readFileSync(filePath);
 
   res.writeHead(200, {
