@@ -19,14 +19,19 @@ async function bootstrap() {
 
   const app = Fastify({ logger: false });
 
+  const allowedOrigins = process.env.CORS_ORIGIN
+    ? process.env.CORS_ORIGIN.split(',').map(s => s.trim())
+    : true;
+
   await app.register(cors, {
-    origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',').map(s => s.trim()) : '*',
-    methods: ['GET', 'POST', 'PATCH', 'DELETE'],
+    origin: allowedOrigins,
+    methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
   });
 
-  await app.register(quoteRoutes, { prefix: '/api/v1' });
-  await app.register(chatRoutes,  { prefix: '/api/v1' });
+  await app.register(quoteRoutes, { prefix: '/api' });
+  await app.register(chatRoutes,  { prefix: '/api' });
 
   app.get('/health', () => ({
     status: 'ok',
