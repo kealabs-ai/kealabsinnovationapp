@@ -10,11 +10,12 @@
     "build": "tsc",
     "build:web": "cd web && npm run build",
     "build:all": "npm run build && npm run build:web",
-    "start": "node dist/server.js",
+    "start": "npm run build:all && node dist/server.js",
     "install:all": "npm install && cd web && npm install"
   },
   "dependencies": {
     "@fastify/cors": "^10.0.2",
+    "@fastify/static": "^9.0.0",
     "@google/generative-ai": "^0.24.1",
     "dotenv": "^16.4.7",
     "fastify": "^5.8.2",

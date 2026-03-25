@@ -1,11 +1,13 @@
 import 'dotenv/config';
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
+import staticFiles from '@fastify/static';
 import { createServer } from 'http';
 import { Server as SocketServer } from 'socket.io';
 import { quoteRoutes } from './routes/quote.routes';
 import { chatRoutes } from './routes/chat.routes';
 import { quoteObserver } from './patterns/quote.observer';
+import path from 'path';
 
 const ORANGE = '\x1b[38;2;234;88;12m';
 const SLATE  = '\x1b[38;2;148;163;184m';
@@ -13,6 +15,8 @@ const RESET  = '\x1b[0m';
 const log = (msg: string) => console.log(`${ORANGE}[KeaFlow]${RESET} ${SLATE}${msg}${RESET}`);
 
 async function bootstrap() {
+  const webDist = path.join(__dirname, '..', 'web', 'dist');
+
   const app = Fastify({ logger: false });
 
   await app.register(cors, {
@@ -27,10 +31,21 @@ async function bootstrap() {
   app.get('/health', () => ({
     status: 'ok',
     brand: 'KeaLabs',
-    mode: 'stateless — in-memory store',
     version: '1.0.0',
     timestamp: new Date().toISOString(),
   }));
+
+  // Serve frontend estático — deve vir após as rotas de API
+  await app.register(staticFiles, {
+    root: webDist,
+    prefix: '/',
+    wildcard: false,
+  });
+
+  // SPA fallback — qualquer rota não encontrada retorna index.html
+  app.setNotFoundHandler((_req, reply) => {
+    reply.sendFile('index.html', webDist);
+  });
 
   const httpServer = createServer(app.server);
   const io = new SocketServer(httpServer, {
