@@ -96,25 +96,28 @@ export function useSettings() {
   const [settings, setSettings] = useState<ServiceSettings>(() => {
     try {
       const stored = localStorage.getItem(CACHE_KEY);
-      return stored ? { ...DEFAULTS, ...JSON.parse(stored) } : DEFAULTS;
-    } catch { return DEFAULTS; }
+      return stored ? JSON.parse(stored) : null;
+    } catch { return null; }
   });
 
-  // Carrega do servidor na montagem
+  const [loaded, setLoaded] = useState(false);
+
   useEffect(() => {
     settingsApi.list().then((r) => {
       const rows = Array.isArray(r.data) ? r.data : [];
-      const merged = { ...DEFAULTS, ...fromApi(rows) };
-      setSettings(merged);
-      localStorage.setItem(CACHE_KEY, JSON.stringify(merged));
-    }).catch(() => { /* usa cache local */ });
+      if (rows.length > 0) {
+        const fromServer = fromApi(rows);
+        setSettings(fromServer as ServiceSettings);
+        localStorage.setItem(CACHE_KEY, JSON.stringify(fromServer));
+      }
+      setLoaded(true);
+    }).catch(() => setLoaded(true));
   }, []);
 
   const update = (patch: Partial<ServiceSettings>) => {
     setSettings((prev) => {
-      const next = { ...prev, ...patch };
+      const next = { ...prev, ...patch } as ServiceSettings;
       localStorage.setItem(CACHE_KEY, JSON.stringify(next));
-      // Persiste cada chave alterada no servidor
       for (const [k, v] of Object.entries(patch) as [keyof ServiceSettings, number][]) {
         const dbKey = KEY_MAP[k];
         if (dbKey) settingsApi.upsert(dbKey, String(v)).catch(() => {});
@@ -124,13 +127,9 @@ export function useSettings() {
   };
 
   const reset = () => {
-    setSettings(DEFAULTS);
+    setSettings(null as unknown as ServiceSettings);
     localStorage.removeItem(CACHE_KEY);
-    // Restaura todos os defaults no servidor
-    for (const [k, v] of Object.entries(DEFAULTS) as [keyof ServiceSettings, number][]) {
-      settingsApi.upsert(KEY_MAP[k], String(v)).catch(() => {});
-    }
   };
 
-  return { settings, update, reset, DEFAULTS };
+  return { settings: settings ?? DEFAULTS, update, reset, DEFAULTS, loaded };
 }
