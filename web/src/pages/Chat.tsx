@@ -73,16 +73,13 @@ export function Chat() {
 
     try {
       const res = await chatApi.sendMessage(session.id, 'user', text);
-      const raw = res.data as unknown as { user: ChatMessage; model: ChatMessage | null };
-
-      const confirmed: ChatMessage[] = [
-        ...(raw?.user?.role ? [raw.user] : []),
-        ...(raw?.model?.role ? [raw.model] : []),
-      ];
+      const newMsgs: ChatMessage[] = Array.isArray(res.data)
+        ? res.data.filter((m: ChatMessage) => m?.role)
+        : [];
 
       setMessages((prev) => [
         ...prev.filter((m) => m.id !== optimisticUser.id),
-        ...(confirmed.length > 0 ? confirmed : [optimisticUser]),
+        ...(newMsgs.length > 0 ? newMsgs : [optimisticUser]),
       ]);
     } catch {
       setError('Erro ao enviar mensagem.');
