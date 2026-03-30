@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { Sun, Moon, Settings, MessageSquare } from 'lucide-react';
+import keaLogo from '../assets/kealabs_logo_strategic.png';
 import { useTheme } from '../lib/useTheme';
 
 export function Navbar() {
@@ -19,17 +20,13 @@ export function Navbar() {
     <header className="sticky top-0 z-50 backdrop-blur shadow-sm"
       style={{ backgroundColor: 'color-mix(in srgb, var(--kea-surface) 90%, transparent)', borderBottom: '1px solid var(--kea-border)' }}>
       <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-600 to-orange-400 flex items-center justify-center shadow">
-            <span className="text-white font-black text-sm">K</span>
-          </div>
-          <span className="font-black tracking-tight" style={{ color: 'var(--kea-heading)' }}>
-            Kea<span className="text-orange-600">Flow</span>
-          </span>
+        <div className="flex items-center">
+          <img src={keaLogo} alt="KeaLabs" className="h-8 w-auto" />
         </div>
         <nav className="flex items-center gap-2">
           {link('/', 'Dashboard')}
           {link('/builder', 'Novo Orçamento')}
+          {link('/prospects', 'Prospects')}
           <Link to="/chat"
             className={`p-2 rounded-xl transition-all hover:text-orange-600 ${
               pathname === '/chat' ? 'bg-orange-600 text-white' : ''

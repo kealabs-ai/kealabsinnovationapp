@@ -137,6 +137,35 @@ export async function quoteRoutes(app: FastifyInstance) {
     return reply.send({ success: true });
   });
 
+  // ─── PROSPECTS ──────────────────────────────────────────────────────────────
+  const prospectsStore = new Map<string, Record<string, unknown>>();
+
+  app.get('/prospects', async (_req, reply) => {
+    return reply.send(Array.from(prospectsStore.values()));
+  });
+
+  app.post<{ Body: Record<string, unknown> }>('/prospects', async (req, reply) => {
+    const id = randomUUID();
+    const now = new Date().toISOString();
+    const prospect = { ...req.body, id, created_at: now };
+    prospectsStore.set(id, prospect);
+    return reply.status(201).send(prospect);
+  });
+
+  app.post<{ Body: Record<string, unknown> & { id: string } }>('/prospects/update', async (req, reply) => {
+    const { id } = req.body;
+    const existing = prospectsStore.get(id);
+    if (!existing) return reply.status(404).send({ error: 'Prospect not found' });
+    const updated = { ...existing, ...req.body };
+    prospectsStore.set(id, updated);
+    return reply.send(updated);
+  });
+
+  app.post<{ Body: { id: string } }>('/prospects/delete', async (req, reply) => {
+    prospectsStore.delete(req.body.id);
+    return reply.send({ success: true });
+  });
+
   // ─── AGENTS ───────────────────────────────────────────────────────────────
   const defaultAgent = {
     id: 'default',

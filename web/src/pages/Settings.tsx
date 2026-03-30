@@ -15,15 +15,18 @@ export function Settings() {
   const field = (
     label: string,
     key: keyof typeof settings,
-    opts: { prefix?: string; suffix?: string; step?: number; min?: number } = {}
+    opts: { prefix?: string; suffix?: string; step?: number; min?: number; toDisplay?: (v: number) => number; fromInput?: (v: number) => number } = {}
   ) => (
     <div key={key} className="flex flex-col gap-1">
       <label className="label">{label}</label>
       <div className="flex items-center gap-2">
         {opts.prefix && <span className="text-sm font-bold" style={{ color: 'var(--kea-subtle)' }}>{opts.prefix}</span>}
         <input type="number" step={opts.step ?? 1} min={opts.min ?? 0} className="input"
-          value={settings[key] as number}
-          onChange={(e) => update({ [key]: parseFloat(e.target.value) || 0 })} />
+          value={opts.toDisplay ? opts.toDisplay(settings[key] as number) : settings[key] as number}
+          onChange={(e) => {
+            const raw = parseFloat(e.target.value) || 0;
+            update({ [key]: opts.fromInput ? opts.fromInput(raw) : raw });
+          }} />
         {opts.suffix && <span className="text-sm font-bold" style={{ color: 'var(--kea-subtle)' }}>{opts.suffix}</span>}
       </div>
     </div>
@@ -131,6 +134,14 @@ export function Settings() {
             {field('Agile Setup', 'moduleAgileSetup', { prefix: 'R$' })}
             {field('Mentoria Ágil (por hora)', 'moduleMentoringHour', { prefix: 'R$' })}
             {field('Suporte mensal (% do setup)', 'monthlySupportRate', { step: 0.01, min: 0, suffix: '%' })}
+          </>)}
+
+          {section('💳 Parcelamento', <>
+            {field('Limite de parcelas', 'installmentLimit', { suffix: 'x', min: 1 })}
+            {field('Juros por parcela', 'installmentInterestRate', { step: 0.01, min: 0, suffix: '% a.m.',
+              toDisplay: (v: number) => parseFloat((v * 100).toFixed(4)),
+              fromInput: (v: number) => parseFloat((v / 100).toFixed(6)),
+            })}
           </>)}
 
           {section('🖥️ Hospedagem — Mensalidade', <>

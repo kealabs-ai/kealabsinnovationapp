@@ -17,7 +17,7 @@ const log = (msg: string) => console.log(`${ORANGE}[KeaFlow]${RESET} ${SLATE}${m
 async function bootstrap() {
   const webDist = path.join(__dirname, '..', 'web', 'dist');
 
-  const app = Fastify({ logger: false });
+  const app = Fastify({ logger: false, ajv: { customOptions: { removeAdditional: true } } });
 
   const allowedOrigins = process.env.CORS_ORIGIN
     ? process.env.CORS_ORIGIN.split(',').map(s => s.trim())

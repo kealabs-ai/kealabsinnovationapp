@@ -72,6 +72,7 @@ export interface CreateQuoteDTO {
   clientName: string;
   clientEmail?: string;
   clientCpfCnpj?: string;
+  clientPhone?: string;
   pricing: PricingInput;
 }
 

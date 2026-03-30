@@ -81,14 +81,20 @@ export interface PricingResult {
 }
 
 export interface Quote {
-  id: string;
+  id: string;           // normalizado — pode vir como quote_id da API Python
+  quote_id?: string;
   client_id: string;
   clientName?: string;
+  client_name?: string;
   clientEmail?: string;
+  client_email?: string;
   service_type: ServiceType;
   status: QuoteStatus;
   setup_value: number;
   monthly_value: number;
+  installments?: number;
+  interest_rate?: number;
+  installment_value?: number;
   description?: string;
   asaas_customer_id?: string;
   asaas_charge_id?: string;
@@ -165,21 +171,39 @@ export const clientsApi = {
 
 // ─── QUOTES ───────────────────────────────────────────────────────────────────
 
+// A API Python retorna quote_id, client_name, client_email — normaliza para o formato do frontend
+function normalizeQuote(q: Record<string, unknown>): Quote {
+  return {
+    ...(q as unknown as Quote),
+    id: (q.id ?? q.quote_id) as string,
+    clientName: (q.clientName ?? q.client_name) as string | undefined,
+    clientEmail: (q.clientEmail ?? q.client_email) as string | undefined,
+  };
+}
+
+function normalizeQuotes(data: unknown): Quote[] {
+  if (!Array.isArray(data)) return [];
+  return data.map((q) => normalizeQuote(q as Record<string, unknown>));
+}
+
 export interface CreateQuoteDTO {
   clientName: string;
   clientEmail?: string;
   clientCpfCnpj?: string;
   clientPhone?: string;
   pricing: WebPricingInput | BIPricingInput | MiniSitePricingInput | AIAgentPricingInput;
+  installments: number;
+  interest_rate: number;
+  installment_value: number;
 }
 
 export const quotesApi = {
-  list:             ()                                                          => api.get<Quote[]>('/quotes'),
-  get:              (id: string)                                                => api.get<Quote>(`/quotes/${id}`),
+  list:             ()                                                          => api.get<Quote[]>('/quotes').then(r => { r.data = normalizeQuotes(r.data); return r; }),
+  get:              (id: string)                                                => api.get<Quote>(`/quotes/${id}`).then(r => { r.data = normalizeQuote(r.data as Record<string, unknown>); return r; }),
   history:          (id: string)                                                => api.get<QuoteStatusHistory[]>(`/quotes/${id}/history`),
   metricsByService: ()                                                          => api.get('/quotes/metrics/by-service'),
   metricsMonthly:   ()                                                          => api.get('/quotes/metrics/monthly'),
-  create:           (body: CreateQuoteDTO)                                      => api.post<Quote>('/quotes', body),
+  create:           (body: CreateQuoteDTO)                                      => api.post<Quote>('/quotes', body).then(r => { r.data = normalizeQuote(r.data as Record<string, unknown>); return r; }),
   updateStatus:     (id: string, status: QuoteStatus, note?: string)           => api.post('/quotes/update-status', { id, status, note }),
   updateAsaas:      (id: string, asaas_customer_id: string, asaas_charge_id: string) =>
                       api.post('/quotes/update-asaas', { id, asaas_customer_id, asaas_charge_id }),
@@ -206,6 +230,32 @@ export const settingsApi = {
   get:    (key: string)                                  => api.get<SystemSetting>(`/settings/${key}`),
   upsert: (setting_key: string, setting_value: string)  => api.post('/settings/upsert', { setting_key, setting_value }),
   delete: (setting_key: string)                          => api.post('/settings/delete', { setting_key }),
+};
+
+// ─── PROSPECTS ───────────────────────────────────────────────────────────────
+
+export type ProspectSource = 'instagram' | 'whatsapp' | 'site' | 'indicacao' | 'outro';
+export type ProspectStatus = 'NEW' | 'CONTACTED' | 'NEGOTIATING' | 'APPROVED' | 'REJECTED';
+
+export interface Prospect {
+  id: string;
+  name: string;
+  email?: string;
+  cpf_cnpj?: string;
+  phone?: string;
+  company?: string;
+  source?: ProspectSource;
+  status: ProspectStatus;
+  notes?: string;
+  client_id?: string;
+  created_at: string;
+}
+
+export const prospectsApi = {
+  list:   ()                                                                  => api.get<Prospect[]>('/prospects'),
+  create: (body: Omit<Prospect, 'id' | 'created_at'>)                        => api.post<Prospect>('/prospects', body),
+  update: (body: Partial<Prospect> & { id: string })                         => api.post<Prospect>('/prospects/update', body),
+  delete: (id: string)                                                        => api.post('/prospects/delete', { id }),
 };
 
 // ─── AGENTS ───────────────────────────────────────────────────────────────────

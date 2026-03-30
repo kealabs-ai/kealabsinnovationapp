@@ -37,6 +37,8 @@ export interface ServiceSettings {
   hostingVpsPro: number;
   hostingVpsUltra: number;
   monthlySupportRate: number;
+  installmentLimit: number;
+  installmentInterestRate: number;
 }
 
 // Mapa: chave do frontend → setting_key no banco
@@ -60,6 +62,8 @@ const KEY_MAP: Record<keyof ServiceSettings, string> = {
   hostingBusiness: 'hosting_business', hostingVpsStarter: 'hosting_vps_starter',
   hostingVpsPro: 'hosting_vps_pro', hostingVpsUltra: 'hosting_vps_ultra',
   monthlySupportRate: 'monthly_support_rate',
+  installmentLimit: 'installment_limit',
+  installmentInterestRate: 'installment_interest_rate',
 };
 
 export const DEFAULTS: ServiceSettings = {
@@ -76,6 +80,8 @@ export const DEFAULTS: ServiceSettings = {
   hostingSingle: 12.99, hostingPremium: 17.99, hostingBusiness: 26.99,
   hostingVpsStarter: 49.90, hostingVpsPro: 89.90, hostingVpsUltra: 149.90,
   monthlySupportRate: 0.1,
+  installmentLimit: 12,
+  installmentInterestRate: 0,
 };
 
 const CACHE_KEY = 'keaflow-settings';
@@ -87,7 +93,11 @@ function fromApi(rows: { setting_key: string; setting_value: string }[]): Partia
   const result: Partial<ServiceSettings> = {};
   for (const row of rows) {
     const key = reverseMap[row.setting_key];
-    if (key) result[key] = parseFloat(row.setting_value);
+    if (key) {
+      const val = parseFloat(row.setting_value);
+      // interest_rate vem como percentual (ex: 3.5) → converte para decimal (0.035)
+      result[key] = key === 'installmentInterestRate' ? val / 100 : val;
+    }
   }
   return result;
 }
@@ -120,7 +130,9 @@ export function useSettings() {
       localStorage.setItem(CACHE_KEY, JSON.stringify(next));
       for (const [k, v] of Object.entries(patch) as [keyof ServiceSettings, number][]) {
         const dbKey = KEY_MAP[k];
-        if (dbKey) settingsApi.upsert(dbKey, String(v)).catch(() => {});
+        // interest_rate é salvo como percentual na API (ex: 0.035 → "3.5")
+        const apiVal = k === 'installmentInterestRate' ? String(v * 100) : String(v);
+        if (dbKey) settingsApi.upsert(dbKey, apiVal).catch(() => {});
       }
       return next;
     });

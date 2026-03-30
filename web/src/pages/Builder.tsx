@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type React from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -6,8 +6,8 @@ import {
   Workflow, MessageCircle, Rocket, Clock, Server, HardDrive, Cpu, Ban,
   Instagram, Link, Bot, Sparkles, BrainCircuit, Building2, BookOpen, Mic,
 } from 'lucide-react';
-import { quotesApi } from '../lib/api';
-import type { CreateQuoteDTO, Quote, HostingPlan, BISource, MiniSitePricingInput, AIAgentPricingInput, AgentPlan } from '../lib/api';
+import { quotesApi, prospectsApi } from '../lib/api';
+import type { CreateQuoteDTO, Quote, HostingPlan, BISource, MiniSitePricingInput, AIAgentPricingInput, AgentPlan, Prospect } from '../lib/api';
 import { useSettings } from '../lib/useSettings';
 
 const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -31,11 +31,18 @@ export function Builder() {
   const { settings } = useSettings();
   const [loading, setLoading]               = useState(false);
   const [result, setResult]                 = useState<Quote | null>(null);
+  const [prospects, setProspects]           = useState<Prospect[]>([]);
   const [clientName, setClientName]         = useState('');
   const [clientEmail, setClientEmail]       = useState('');
   const [clientCpfCnpj, setClientCpfCnpj]   = useState('');
   const [clientPhone, setClientPhone]       = useState('');
+
+  useEffect(() => {
+    prospectsApi.list().then(r => setProspects(Array.isArray(r.data) ? r.data : [])).catch(() => {});
+  }, []);
   const [serviceType, setServiceType]       = useState<'WEB' | 'BI' | 'MINI_SITE' | 'AI_AGENT'>('WEB');
+  const [includeWeb, setIncludeWeb]         = useState(true);
+  const [includeMiniSite, setIncludeMiniSite] = useState(false);
   const [menuCount, setMenuCount]           = useState(6);
   const [includeAsaas, setIncludeAsaas]     = useState(false);
   const [sources, setSources]               = useState<Set<BISource>>(new Set(['excel']));
@@ -52,6 +59,7 @@ export function Builder() {
   const [agileSetup, setAgileSetup]         = useState(false);
   const [mentoringHours, setMentoringHours] = useState(0);
   const [hosting, setHosting]               = useState<HostingPlan | ''>('');
+  const [installments, setInstallments]     = useState(12);
 
   const AGENT_PLANS: Record<AgentPlan, { setup: number; monthly: number; model: string; agents: string; msgs: string; memory: string; desc: string; icon: React.ElementType; badge?: string }> = {
     free:       { setup: settings.agentFreeSetup,       monthly: settings.agentFreeMonthly,       model: 'Gemini 2.0 Flash',                     agents: '1 agente',       msgs: '500 msgs/mês',  memory: 'Sem memória persistente', desc: 'Ideal para testes e MVPs. Usa a API gratuita do Gemini Flash sem custo de modelo, mas com limites de uso.',                                                    icon: Sparkles },
@@ -71,7 +79,7 @@ export function Builder() {
     whatsappGateway: wpp || undefined,
     agileSetup: agileSetup || undefined,
     agileMentoringHours: mentoringHours > 0 ? mentoringHours : undefined,
-    hosting: hosting || undefined,
+    hosting: hosting ? hosting : undefined,
   });
 
   const MODULE_PRICES = {
@@ -90,13 +98,17 @@ export function Builder() {
   };
 
   const preview = (() => {
-    let base = serviceType === 'WEB'
-      ? settings.webBase + (menuCount > settings.webFreeMenus ? (menuCount - settings.webFreeMenus) * settings.webExtraMenuPrice : 0) + (includeAsaas ? settings.webAsaasIntegration : 0)
-      : serviceType === 'MINI_SITE'
-        ? settings.miniSiteBase + (pageCount > settings.miniSiteFreePages ? (pageCount - settings.miniSiteFreePages) * settings.miniSiteExtraPagePrice : 0) + (includeInstagram ? settings.miniSiteInstagram : 0) + (includeWppButton ? settings.miniSiteWhatsapp : 0)
-        : serviceType === 'AI_AGENT'
-          ? AGENT_PLANS[agentPlan].setup + Math.max(0, agentCount - 1) * settings.agentExtraAgentPrice + (includeRAG ? settings.agentRAG : 0) + (includeVoice ? settings.agentVoice : 0)
-          : Array.from(sources).reduce((sum, s) => sum + BI_PRICES[s], 0) * (complexity === 'advanced' ? settings.biAdvancedMultiplier : 1);
+    let base = 0;
+    if (serviceType === 'WEB' || serviceType === 'MINI_SITE') {
+      if (includeWeb)
+        base += settings.webBase + (menuCount > settings.webFreeMenus ? (menuCount - settings.webFreeMenus) * settings.webExtraMenuPrice : 0) + (includeAsaas ? settings.webAsaasIntegration : 0);
+      if (includeMiniSite)
+        base += settings.miniSiteBase + (pageCount > settings.miniSiteFreePages ? (pageCount - settings.miniSiteFreePages) * settings.miniSiteExtraPagePrice : 0) + (includeInstagram ? settings.miniSiteInstagram : 0) + (includeWppButton ? settings.miniSiteWhatsapp : 0);
+    } else if (serviceType === 'AI_AGENT') {
+      base = AGENT_PLANS[agentPlan].setup + Math.max(0, agentCount - 1) * settings.agentExtraAgentPrice + (includeRAG ? settings.agentRAG : 0) + (includeVoice ? settings.agentVoice : 0);
+    } else {
+      base = Array.from(sources).reduce((sum, s) => sum + BI_PRICES[s], 0) * (complexity === 'advanced' ? settings.biAdvancedMultiplier : 1);
+    }
     let setup = base;
     if (n8n) setup += MODULE_PRICES.n8n;
     if (wpp) setup += MODULE_PRICES.wpp;
@@ -109,26 +121,78 @@ export function Builder() {
 
   const submit = async () => {
     if (!clientName.trim()) return alert('Informe o nome do cliente');
+    const isWeb   = includeWeb;
+    const isMini  = includeMiniSite;
+    const isBI    = serviceType === 'BI';
+    const isAgent = serviceType === 'AI_AGENT';
+    if (!isWeb && !isMini && !isBI && !isAgent) return alert('Selecione ao menos um tipo de serviço');
     setLoading(true);
+    const installmentPayload = {
+      installments,
+      interest_rate: settings.installmentInterestRate,
+      installment_value: calcInstallment(preview.setup, installments),
+    };
     try {
-      const dto: CreateQuoteDTO = {
-        clientName,
-        clientEmail: clientEmail || undefined,
-        clientCpfCnpj: clientCpfCnpj || undefined,
-        pricing: serviceType === 'WEB'
-          ? { serviceType: 'WEB', menuCount, includeAsaasIntegration: includeAsaas, modules: buildModules() }
-          : serviceType === 'MINI_SITE'
-            ? { serviceType: 'MINI_SITE', pageCount, includeInstagram, includeWhatsappButton: includeWppButton, modules: buildModules() } as MiniSitePricingInput
-            : serviceType === 'AI_AGENT'
-              ? { serviceType: 'AI_AGENT', plan: agentPlan, agentCount, includeRAG, includeVoice, modules: buildModules() } as AIAgentPricingInput
-              : { serviceType: 'BI', sources: Array.from(sources) as BISource[], complexity, modules: buildModules() },
-      };
-      const r = await quotesApi.create(dto);
-      setResult(r.data);
+      const requests: Promise<unknown>[] = [];
+      if (isWeb) {
+        const dto: CreateQuoteDTO = {
+          clientName, clientEmail: clientEmail || undefined, clientCpfCnpj: clientCpfCnpj || undefined,
+          pricing: { serviceType: 'WEB', menuCount, includeAsaasIntegration: includeAsaas, modules: buildModules() },
+          ...installmentPayload,
+        };
+        console.log('[KeaFlow] payload WEB:', JSON.stringify(dto, null, 2));
+        requests.push(quotesApi.create(dto));
+      }
+      if (isMini) {
+        const dto: CreateQuoteDTO = {
+          clientName, clientEmail: clientEmail || undefined, clientCpfCnpj: clientCpfCnpj || undefined,
+          pricing: { serviceType: 'MINI_SITE', pageCount, includeInstagram, includeWhatsappButton: includeWppButton, modules: buildModules() } as MiniSitePricingInput,
+          ...installmentPayload,
+        };
+        console.log('[KeaFlow] payload MINI_SITE:', JSON.stringify(dto, null, 2));
+        requests.push(quotesApi.create(dto));
+      }
+      if (isBI) {
+        const dto: CreateQuoteDTO = {
+          clientName, clientEmail: clientEmail || undefined, clientCpfCnpj: clientCpfCnpj || undefined,
+          pricing: { serviceType: 'BI', sources: Array.from(sources) as BISource[], complexity, modules: buildModules() },
+          ...installmentPayload,
+        };
+        console.log('[KeaFlow] payload BI:', JSON.stringify(dto, null, 2));
+        requests.push(quotesApi.create(dto));
+      }
+      if (isAgent) {
+        const dto: CreateQuoteDTO = {
+          clientName, clientEmail: clientEmail || undefined, clientCpfCnpj: clientCpfCnpj || undefined,
+          pricing: { serviceType: 'AI_AGENT', plan: agentPlan, agentCount, includeRAG, includeVoice, modules: buildModules() } as AIAgentPricingInput,
+          ...installmentPayload,
+        };
+        console.log('[KeaFlow] payload AI_AGENT:', JSON.stringify(dto, null, 2));
+        requests.push(quotesApi.create(dto));
+      }
+      const results = await Promise.all(requests);
+      setResult((results[0] as { data: Quote }).data);
     } finally {
       setLoading(false);
     }
   };
+
+  const ic = (on: boolean) => on ? 'text-orange-600' : 'text-orange-300 dark:text-brand-muted';
+
+  // Tabela de taxas Asaas (cartão de crédito online)
+  const ASAAS_FEE = 0.49;
+  const asaasRate = (n: number) =>
+    n === 1 ? 0.0299 : n <= 6 ? 0.0349 : n <= 12 ? 0.0399 : 0.0429;
+
+  // Juros simples, 1ª parcela isenta de juros
+  // P = (PV * (1 + i * (n-1))) / n + 0,49
+  const calcInstallment = (total: number, n: number) => {
+    const i = asaasRate(n);
+    const base = n === 1 ? total * (1 + i) : (total * (1 + i * (n - 1))) / n;
+    return parseFloat((base + ASAAS_FEE).toFixed(2));
+  };
+
+  const maxInstallments = settings.installmentLimit;
 
   // Card selecionável genérico
   const SelectCard = ({
@@ -143,7 +207,231 @@ export function Builder() {
     </button>
   );
 
-  const ic = (on: boolean) => on ? 'text-orange-600' : 'text-orange-300 dark:text-brand-muted';
+  const generatePDF = async () => {
+    const { jsPDF } = await import('jspdf');
+    const doc = new jsPDF();
+    const O  = [234, 88, 12]  as const; // orange
+    const D  = [20,  20,  20] as const; // dark
+    const G  = [100, 100, 100] as const; // gray
+    const L  = [248, 248, 248] as const; // light row
+    const W  = [255, 255, 255] as const; // white
+    const GR = [34, 197, 94]  as const; // green
+
+    let y = 0;
+
+    // ── helpers ──────────────────────────────────────────────────────────────
+    const sectionTitle = (title: string) => {
+      y += 8;
+      doc.setFillColor(...O);
+      doc.rect(14, y, 182, 7, 'F');
+      doc.setTextColor(...W);
+      doc.setFontSize(9); doc.setFont('helvetica', 'bold');
+      doc.text(title.toUpperCase(), 17, y + 5);
+      y += 11;
+    };
+
+    const row = (label: string, value: string, shade: boolean, bold = false) => {
+      if (shade) { doc.setFillColor(...L); doc.rect(14, y - 4, 182, 8, 'F'); }
+      doc.setTextColor(...G); doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
+      doc.text(label, 17, y);
+      doc.setTextColor(...D); doc.setFont('helvetica', bold ? 'bold' : 'normal');
+      doc.text(value, 196, y, { align: 'right' });
+      y += 8;
+    };
+
+    const badge = (text: string, x: number, by: number, bg: readonly [number,number,number]) => {
+      doc.setFillColor(...bg);
+      doc.roundedRect(x, by - 4, doc.getTextWidth(text) + 6, 6, 1, 1, 'F');
+      doc.setTextColor(...W); doc.setFontSize(7); doc.setFont('helvetica', 'bold');
+      doc.text(text, x + 3, by);
+    };
+
+    // ── HEADER ───────────────────────────────────────────────────────────────
+    doc.setFillColor(...O);
+    doc.rect(0, 0, 210, 36, 'F');
+    doc.setFillColor(200, 70, 5);
+    doc.rect(0, 28, 210, 8, 'F');
+    doc.setTextColor(...W);
+    doc.setFontSize(24); doc.setFont('helvetica', 'bold');
+    doc.text('KeaLabs', 14, 18);
+    doc.setFontSize(10); doc.setFont('helvetica', 'normal');
+    doc.text('Proposta Comercial — KeaFlow', 14, 27);
+    doc.setFontSize(8);
+    doc.text(new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' }), 196, 27, { align: 'right' });
+    doc.setFontSize(8); doc.setFont('helvetica', 'italic');
+    doc.text('Este documento é uma proposta comercial gerada automaticamente pelo sistema KeaFlow.', 14, 33);
+    y = 46;
+
+    // ── CLIENTE ──────────────────────────────────────────────────────────────
+    sectionTitle('Dados do Cliente');
+    [
+      ['Cliente',   clientName    || '—'],
+      ['E-mail',    clientEmail   || '—'],
+      ['CPF/CNPJ',  clientCpfCnpj || '—'],
+      ['Telefone',  clientPhone   || '—'],
+    ].forEach(([l, v], i) => row(l, v, i % 2 === 0));
+
+    // ── SERVIÇOS ─────────────────────────────────────────────────────────────
+    if (includeWeb) {
+      sectionTitle('Site Web');
+      row('Base do projeto', fmt(settings.webBase), false);
+      row('Menus / Seções', `${menuCount} menus`, true);
+      if (menuCount > settings.webFreeMenus)
+        row('  Menus extras', `${menuCount - settings.webFreeMenus} × ${fmt(settings.webExtraMenuPrice)} = ${fmt((menuCount - settings.webFreeMenus) * settings.webExtraMenuPrice)}`, false);
+      row('Integração Asaas (gateway)', includeAsaas ? fmt(settings.webAsaasIntegration) : 'Não incluído', true);
+      const webTotal = settings.webBase
+        + (menuCount > settings.webFreeMenus ? (menuCount - settings.webFreeMenus) * settings.webExtraMenuPrice : 0)
+        + (includeAsaas ? settings.webAsaasIntegration : 0);
+      doc.setFillColor(255, 241, 230);
+      doc.rect(14, y - 2, 182, 8, 'F');
+      doc.setTextColor(...O); doc.setFont('helvetica', 'bold'); doc.setFontSize(9);
+      doc.text('Subtotal Site Web', 17, y + 4);
+      doc.text(fmt(webTotal), 196, y + 4, { align: 'right' });
+      y += 12;
+    }
+
+    if (includeMiniSite) {
+      sectionTitle('Mini Site');
+      row('Base do projeto', fmt(settings.miniSiteBase), false);
+      row('Páginas', `${pageCount} páginas`, true);
+      if (pageCount > settings.miniSiteFreePages)
+        row('  Páginas extras', `${pageCount - settings.miniSiteFreePages} × ${fmt(settings.miniSiteExtraPagePrice)} = ${fmt((pageCount - settings.miniSiteFreePages) * settings.miniSiteExtraPagePrice)}`, false);
+      row('Integração Instagram', includeInstagram ? fmt(settings.miniSiteInstagram) : 'Não incluído', true);
+      row('Botão WhatsApp', includeWppButton ? fmt(settings.miniSiteWhatsapp) : 'Não incluído', false);
+      const miniTotal = settings.miniSiteBase
+        + (pageCount > settings.miniSiteFreePages ? (pageCount - settings.miniSiteFreePages) * settings.miniSiteExtraPagePrice : 0)
+        + (includeInstagram ? settings.miniSiteInstagram : 0)
+        + (includeWppButton ? settings.miniSiteWhatsapp : 0);
+      doc.setFillColor(255, 241, 230);
+      doc.rect(14, y - 2, 182, 8, 'F');
+      doc.setTextColor(...O); doc.setFont('helvetica', 'bold'); doc.setFontSize(9);
+      doc.text('Subtotal Mini Site', 17, y + 4);
+      doc.text(fmt(miniTotal), 196, y + 4, { align: 'right' });
+      y += 12;
+    }
+
+    if (serviceType === 'BI') {
+      sectionTitle('Business Intelligence');
+      Array.from(sources).forEach((s, i) => row(`Fonte: ${s.toUpperCase()}`, fmt(BI_PRICES[s]), i % 2 === 0));
+      row('Complexidade', complexity === 'advanced' ? 'Advanced ×1.3' : 'Standard', true);
+      const biTotal = Array.from(sources).reduce((sum, s) => sum + BI_PRICES[s], 0) * (complexity === 'advanced' ? settings.biAdvancedMultiplier : 1);
+      doc.setFillColor(255, 241, 230);
+      doc.rect(14, y - 2, 182, 8, 'F');
+      doc.setTextColor(...O); doc.setFont('helvetica', 'bold'); doc.setFontSize(9);
+      doc.text('Subtotal BI', 17, y + 4);
+      doc.text(fmt(biTotal), 196, y + 4, { align: 'right' });
+      y += 12;
+    }
+
+    if (serviceType === 'AI_AGENT') {
+      sectionTitle('AI Agent');
+      const plan = AGENT_PLANS[agentPlan];
+      row('Plano', agentPlan.charAt(0).toUpperCase() + agentPlan.slice(1), false);
+      row('Modelo de IA', plan.model, true);
+      row('Agentes', `${agentCount} agente(s)`, false);
+      row('Volume de mensagens', plan.msgs, true);
+      row('Memória', plan.memory, false);
+      if (agentCount > 1) row('Agentes extras', `${agentCount - 1} × ${fmt(settings.agentExtraAgentPrice)} = ${fmt((agentCount - 1) * settings.agentExtraAgentPrice)}`, true);
+      row('Base de Conhecimento (RAG)', includeRAG ? fmt(settings.agentRAG) : 'Não incluído', false);
+      row('Canal de Voz', includeVoice ? fmt(settings.agentVoice) : 'Não incluído', true);
+      row('Mensalidade do plano', fmt(plan.monthly), false);
+      const agentTotal = plan.setup + Math.max(0, agentCount - 1) * settings.agentExtraAgentPrice + (includeRAG ? settings.agentRAG : 0) + (includeVoice ? settings.agentVoice : 0);
+      doc.setFillColor(255, 241, 230);
+      doc.rect(14, y - 2, 182, 8, 'F');
+      doc.setTextColor(...O); doc.setFont('helvetica', 'bold'); doc.setFontSize(9);
+      doc.text('Subtotal AI Agent', 17, y + 4);
+      doc.text(fmt(agentTotal), 196, y + 4, { align: 'right' });
+      y += 12;
+    }
+
+    // ── MÓDULOS ───────────────────────────────────────────────────────────────
+    const hasMods = n8n || wpp || agileSetup || mentoringHours > 0;
+    if (hasMods) {
+      sectionTitle('Módulos Adicionais');
+      if (n8n)              row('n8n Automation',          fmt(MODULE_PRICES.n8n),                                    false);
+      if (wpp)              row('WhatsApp Gateway',         fmt(MODULE_PRICES.wpp),                                    true);
+      if (agileSetup)       row('Agile Setup',              fmt(MODULE_PRICES.agile),                                  n8n || wpp ? false : false);
+      if (mentoringHours>0) row(`Mentoria Ágil (${mentoringHours}h)`, fmt(mentoringHours * MODULE_PRICES.mentoring), true);
+    }
+
+    // ── HOSPEDAGEM ────────────────────────────────────────────────────────────
+    if (hosting) {
+      const hostingLabels: Record<string, { label: string; spec: string; type: string }> = {
+        'single':      { label: 'Single',      spec: '1 site · 10GB SSD · 100GB banda',       type: 'Compartilhada' },
+        'premium':     { label: 'Premium',     spec: '5 sites · 20GB SSD · 200GB banda',      type: 'Compartilhada' },
+        'business':    { label: 'Business',    spec: 'Sites ilimitados · 50GB SSD',            type: 'Compartilhada' },
+        'vps-starter': { label: 'VPS Starter', spec: '2 vCPU · 4GB RAM · 80GB SSD',          type: 'VPS' },
+        'vps-pro':     { label: 'VPS Pro',     spec: '4 vCPU · 8GB RAM · 160GB SSD',         type: 'VPS' },
+        'vps-ultra':   { label: 'VPS Ultra',   spec: '8 vCPU · 16GB RAM · 320GB SSD',        type: 'VPS' },
+      };
+      const h = hostingLabels[hosting];
+      sectionTitle('Plano de Hospedagem');
+
+      // Caixa de aviso
+      doc.setFillColor(255, 247, 237);
+      doc.setDrawColor(...O);
+      doc.setLineWidth(0.4);
+      doc.roundedRect(14, y, 182, 22, 2, 2, 'FD');
+      doc.setTextColor(...O); doc.setFont('helvetica', 'bold'); doc.setFontSize(8);
+      doc.text('⚠  ATENÇÃO: Serviço a ser contratado diretamente pelo cliente', 18, y + 7);
+      doc.setTextColor(...D); doc.setFont('helvetica', 'normal'); doc.setFontSize(8);
+      doc.text('Este plano de hospedagem é recomendado na plataforma Hostinger (hostinger.com.br).', 18, y + 13);
+      doc.text('O cliente deverá contratar e gerenciar este serviço de forma independente.', 18, y + 19);
+      y += 27;
+
+      row('Provedor recomendado', 'Hostinger (hostinger.com.br)', false);
+      row('Plano', `${h.label} — ${h.type}`, true);
+      row('Especificações', h.spec, false);
+      row('Mensalidade estimada', fmt(HOSTING_PRICES[hosting]), true, true);
+
+      // badge verde
+      badge('RECOMENDADO PELA KEALABS', 17, y - 2, GR);
+      y += 4;
+    }
+
+    // ── RESUMO FINANCEIRO ─────────────────────────────────────────────────────
+    y += 4;
+    doc.setFillColor(...O);
+    doc.rect(14, y, 182, 8, 'F');
+    doc.setTextColor(...W); doc.setFont('helvetica', 'bold'); doc.setFontSize(9);
+    doc.text('RESUMO FINANCEIRO', 17, y + 5.5);
+    y += 12;
+
+    doc.setFillColor(...O);
+    doc.roundedRect(14, y, 87, 22, 2, 2, 'F');
+    doc.setTextColor(...W); doc.setFontSize(8); doc.setFont('helvetica', 'normal');
+    doc.text('INVESTIMENTO INICIAL (SETUP)', 57, y + 7, { align: 'center' });
+    doc.setFontSize(14); doc.setFont('helvetica', 'bold');
+    doc.text(fmt(preview.setup), 57, y + 17, { align: 'center' });
+
+    doc.setFillColor(...D);
+    doc.roundedRect(109, y, 87, 22, 2, 2, 'F');
+    doc.setTextColor(...W); doc.setFontSize(8); doc.setFont('helvetica', 'normal');
+    doc.text('PARCELAMENTO DO SETUP', 152, y + 7, { align: 'center' });
+    doc.setFontSize(14); doc.setFont('helvetica', 'bold');
+    doc.text(`${installments} × ${fmt(calcInstallment(preview.setup, installments))}`, 152, y + 17, { align: 'center' });
+    y += 28;
+
+    // nota suporte
+    doc.setTextColor(...G); doc.setFont('helvetica', 'italic'); doc.setFontSize(7.5);
+    const totalParc = calcInstallment(preview.setup, installments) * installments;
+    const jurosInfo = ` com ${(asaasRate(installments) * 100).toFixed(2)}% a.m. + R$ 0,49 Asaas/parcela (total ${fmt(totalParc)})`;
+    doc.text(`* Setup de ${fmt(preview.setup)} parcelado em ${installments}x de ${fmt(calcInstallment(preview.setup, installments))}${jurosInfo}. Mensalidade de suporte: ${fmt(preview.monthly)}${hosting ? ` + hospedagem ${fmt(HOSTING_PRICES[hosting])}/mês` : ''}.`, 14, y);
+    y += 6;
+    if (hosting) {
+      doc.text('* O valor da hospedagem é uma estimativa. O cliente contrata diretamente na Hostinger e pode variar conforme promoções.', 14, y);
+      y += 5;
+    }
+
+    // ── FOOTER ────────────────────────────────────────────────────────────────
+    doc.setFillColor(...O);
+    doc.rect(0, 285, 210, 12, 'F');
+    doc.setTextColor(...W); doc.setFontSize(7.5); doc.setFont('helvetica', 'normal');
+    doc.text('KeaLabs — kealabs.cloud — Tecnologia que transforma negócios', 14, 292);
+    doc.text(`Gerado em ${new Date().toLocaleString('pt-BR')}`, 196, 292, { align: 'right' });
+
+    doc.save(`proposta-${clientName.replace(/\s+/g, '-').toLowerCase() || 'kealabs'}.pdf`);
+  };
 
   return (
     <div className="max-w-3xl mx-auto px-6 py-10 flex flex-col gap-8">
@@ -155,21 +443,57 @@ export function Builder() {
       </div>
 
       {/* Preview */}
-      <div className="rounded-3xl p-6 flex justify-between items-center"
+      <div className="rounded-3xl p-6 flex flex-col gap-4"
         style={{ background: 'linear-gradient(to right, #FFF1E6, #FFF7F3)', border: '1px solid #FED7AA' }}>
-        <div>
-          <p className="label">Setup estimado</p>
-          <p className="text-3xl font-black" style={{ color: 'var(--kea-heading)' }}>{fmt(preview.setup)}</p>
+        <div className="flex justify-between items-center">
+          <div>
+            <p className="label">Setup estimado</p>
+            <p className="text-3xl font-black" style={{ color: 'var(--kea-heading)' }}>{fmt(preview.setup)}</p>
+          </div>
+          <div className="text-right">
+            <p className="label">Parcelamento do Setup</p>
+            <p className="text-3xl font-black text-orange-600">
+              {installments} × {fmt(calcInstallment(preview.setup, installments))}
+            </p>
+            {installments > 0 && (
+              <p className="text-xs mt-0.5" style={{ color: 'var(--kea-body)' }}>
+                {(asaasRate(installments) * 100).toFixed(2)}% a.m. + R$ 0,49/parcela • total {fmt(calcInstallment(preview.setup, installments) * installments)}
+              </p>
+            )}
+          </div>
         </div>
-        <div className="text-right">
-          <p className="label">Mensalidade</p>
-          <p className="text-3xl font-black text-orange-600">{fmt(preview.monthly)}</p>
+        <div>
+          <label className="label">Número de parcelas</label>
+          <div className="flex items-center gap-4">
+            <input type="range" min={1} max={maxInstallments} value={installments}
+              onChange={(e) => setInstallments(Number(e.target.value))} className="flex-1 accent-orange-600" />
+            <span className="font-black w-8 text-center" style={{ color: 'var(--kea-heading)' }}>{installments}×</span>
+          </div>
         </div>
       </div>
 
       {/* Cliente */}
       <div className="card flex flex-col gap-4">
         <h2 className="font-black text-lg" style={{ color: 'var(--kea-heading)' }}>Cliente</h2>
+        {prospects.length > 0 && (
+          <div>
+            <label className="label">Selecionar Prospect</label>
+            <select className="input" defaultValue=""
+              onChange={e => {
+                const p = prospects.find(x => x.id === e.target.value);
+                if (!p) return;
+                setClientName(p.name);
+                setClientEmail(p.email ?? '');
+                setClientCpfCnpj(p.cpf_cnpj ?? '');
+                setClientPhone(p.phone ? maskPhone(p.phone) : '');
+              }}>
+              <option value="">— selecione um prospect —</option>
+              {prospects.map(p => (
+                <option key={p.id} value={p.id}>{p.name}{p.company ? ` · ${p.company}` : ''}</option>
+              ))}
+            </select>
+          </div>
+        )}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div><label className="label">Nome *</label>
             <input className="input" placeholder="Empresa XYZ" value={clientName} onChange={(e) => setClientName(e.target.value)} /></div>
@@ -188,17 +512,38 @@ export function Builder() {
         <h2 className="font-black text-lg" style={{ color: 'var(--kea-heading)' }}>Tipo de Serviço</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {([
-            { type: 'WEB',       icon: Globe,        label: 'Web',                   desc: 'Sites e plataformas web' },
-            { type: 'MINI_SITE', icon: Instagram,     label: 'Mini Site',             desc: 'Site + Instagram integrado' },
-            { type: 'BI',        icon: BarChart2,     label: 'Business Intelligence', desc: 'Dashboards e análise de dados' },
-            { type: 'AI_AGENT',  icon: Bot,           label: 'AI Agent',              desc: 'Agentes com inteligência artificial' },
-          ] as const).map(({ type, icon: Icon, label, desc }) => (
-            <SelectCard key={type} active={serviceType === type} onClick={() => setServiceType(type)}>
-              <Icon size={22} className={`mb-2 ${ic(serviceType === type)}`} />
-              <p className="font-black text-base">{label}</p>
-              <p className="text-xs mt-0.5" style={{ color: 'var(--kea-body)' }}>{desc}</p>
-            </SelectCard>
-          ))}
+            { type: 'WEB',       icon: Globe,    label: 'Web',                   desc: 'Sites e plataformas web',              multi: true  },
+            { type: 'MINI_SITE', icon: Instagram, label: 'Mini Site',             desc: 'Site + Instagram integrado',           multi: true  },
+            { type: 'BI',        icon: BarChart2, label: 'Business Intelligence', desc: 'Dashboards e análise de dados',       multi: false },
+            { type: 'AI_AGENT',  icon: Bot,       label: 'AI Agent',              desc: 'Agentes com inteligência artificial',  multi: false },
+          ] as const).map(({ type, icon: Icon, label, desc, multi }) => {
+            const isActive = type === 'WEB' ? includeWeb
+              : type === 'MINI_SITE' ? includeMiniSite
+              : serviceType === type;
+            const toggle = () => {
+              if (type === 'WEB') {
+                setIncludeWeb((v) => !v);
+                if (!includeWeb) setServiceType('WEB');
+              } else if (type === 'MINI_SITE') {
+                setIncludeMiniSite((v) => !v);
+                if (!includeMiniSite) setServiceType('WEB');
+              } else {
+                setServiceType(type);
+                setIncludeWeb(false);
+                setIncludeMiniSite(false);
+              }
+            };
+            return (
+              <SelectCard key={type} active={isActive} onClick={toggle}>
+                <div className="flex items-start justify-between mb-2">
+                  <Icon size={22} className={ic(isActive)} />
+                  {multi && <Checkbox checked={isActive} />}
+                </div>
+                <p className="font-black text-base">{label}</p>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--kea-body)' }}>{desc}</p>
+              </SelectCard>
+            );
+          })}
         </div>
 
         {serviceType === 'AI_AGENT' && (
@@ -287,8 +632,9 @@ export function Builder() {
           </div>
         )}
 
-        {serviceType === 'MINI_SITE' && (
+        {(serviceType === 'WEB' || serviceType === 'MINI_SITE') && includeMiniSite && (
           <div className="flex flex-col gap-4 pt-2">
+            <p className="text-xs font-black uppercase tracking-wider" style={{ color: 'var(--kea-subtle)' }}>Mini Site</p>
             <div>
               <label className="label">Número de páginas</label>
               <div className="flex items-center gap-4">
@@ -319,8 +665,9 @@ export function Builder() {
           </div>
         )}
 
-        {serviceType === 'WEB' && (
+        {(serviceType === 'WEB' || serviceType === 'MINI_SITE') && includeWeb && (
           <div className="flex flex-col gap-4 pt-2">
+            <p className="text-xs font-black uppercase tracking-wider" style={{ color: 'var(--kea-subtle)' }}>Site Web</p>
             <div>
               <label className="label">Quantidade de menus/seções</label>
               <div className="flex items-center gap-4">
@@ -467,19 +814,35 @@ export function Builder() {
         </div>
       </div>
 
-      <button onClick={submit} disabled={loading} className="btn-primary w-full text-center text-lg">
-        {loading ? 'Calculando...' : '⚡ Gerar Orçamento'}
-      </button>
+      <div className="flex gap-3">
+        <button onClick={submit} disabled={loading} className="btn-primary flex-1 text-center text-lg">
+          {loading ? 'Salvando...' : '⚡ Gerar Orçamento'}
+        </button>
+        <button onClick={generatePDF} disabled={!clientName.trim()}
+          className="btn-ghost flex items-center gap-2 px-5 text-sm font-bold disabled:opacity-40">
+          📄 Baixar PDF
+        </button>
+      </div>
 
       {result && (
         <div className="card flex flex-col gap-4" style={{ borderColor: '#EA580C' }}>
           <div className="flex items-center justify-between">
-            <h2 className="font-black" style={{ color: 'var(--kea-heading)' }}>✅ Orçamento Gerado</h2>
+            <h2 className="font-black" style={{ color: 'var(--kea-heading)' }}>✅ Orçamento Salvo</h2>
             <button onClick={() => navigate('/')} className="btn-ghost text-sm">Ver Dashboard →</button>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div><p className="label">Setup</p><p className="text-2xl font-black" style={{ color: 'var(--kea-heading)' }}>{fmt(result.setup_value)}</p></div>
-            <div><p className="label">Mensalidade</p><p className="text-2xl font-black text-orange-600">{fmt(result.monthly_value)}</p></div>
+            <div>
+              <p className="label">Parcelamento do Setup</p>
+              <p className="text-2xl font-black text-orange-600">
+                {installments} × {fmt(calcInstallment(result.setup_value, installments))}
+              </p>
+              {installments > 0 && (
+                <p className="text-xs mt-0.5" style={{ color: 'var(--kea-body)' }}>
+                  {(asaasRate(installments) * 100).toFixed(2)}% a.m. + R$ 0,49/parcela • total {fmt(calcInstallment(result.setup_value, installments) * installments)}
+                </p>
+              )}
+            </div>
           </div>
         </div>
       )}
