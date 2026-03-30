@@ -172,18 +172,19 @@ export const clientsApi = {
 // ─── QUOTES ───────────────────────────────────────────────────────────────────
 
 // A API Python retorna quote_id, client_name, client_email — normaliza para o formato do frontend
-function normalizeQuote(q: Record<string, unknown>): Quote {
+function normalizeQuote(q: unknown): Quote {
+  const r = q as Record<string, unknown>;
   return {
-    ...(q as unknown as Quote),
-    id: (q.id ?? q.quote_id) as string,
-    clientName: (q.clientName ?? q.client_name) as string | undefined,
-    clientEmail: (q.clientEmail ?? q.client_email) as string | undefined,
+    ...(r as unknown as Quote),
+    id: (r.id ?? r.quote_id) as string,
+    clientName: (r.clientName ?? r.client_name) as string | undefined,
+    clientEmail: (r.clientEmail ?? r.client_email) as string | undefined,
   };
 }
 
 function normalizeQuotes(data: unknown): Quote[] {
   if (!Array.isArray(data)) return [];
-  return data.map((q) => normalizeQuote(q as Record<string, unknown>));
+  return data.map((q) => normalizeQuote(q));
 }
 
 export interface CreateQuoteDTO {
@@ -199,11 +200,11 @@ export interface CreateQuoteDTO {
 
 export const quotesApi = {
   list:             ()                                                          => api.get<Quote[]>('/quotes').then(r => { r.data = normalizeQuotes(r.data); return r; }),
-  get:              (id: string)                                                => api.get<Quote>(`/quotes/${id}`).then(r => { r.data = normalizeQuote(r.data as Record<string, unknown>); return r; }),
+  get:              (id: string)                                                => api.get<Quote>(`/quotes/${id}`).then(r => { r.data = normalizeQuote(r.data); return r; }),
   history:          (id: string)                                                => api.get<QuoteStatusHistory[]>(`/quotes/${id}/history`),
   metricsByService: ()                                                          => api.get('/quotes/metrics/by-service'),
   metricsMonthly:   ()                                                          => api.get('/quotes/metrics/monthly'),
-  create:           (body: CreateQuoteDTO)                                      => api.post<Quote>('/quotes', body).then(r => { r.data = normalizeQuote(r.data as Record<string, unknown>); return r; }),
+  create:           (body: CreateQuoteDTO)                                      => api.post<Quote>('/quotes', body).then(r => { r.data = normalizeQuote(r.data); return r; }),
   updateStatus:     (id: string, status: QuoteStatus, note?: string)           => api.post('/quotes/update-status', { id, status, note }),
   updateAsaas:      (id: string, asaas_customer_id: string, asaas_charge_id: string) =>
                       api.post('/quotes/update-asaas', { id, asaas_customer_id, asaas_charge_id }),
