@@ -5,6 +5,7 @@ import { Builder } from './pages/Builder';
 import { Settings } from './pages/Settings';
 import { Chat } from './pages/Chat';
 import { Prospects } from './pages/Prospects';
+import { Users } from './pages/Users';
 
 export default function App() {
   return (
@@ -17,6 +18,7 @@ export default function App() {
           <Route path="/prospects" element={<Prospects />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/chat" element={<Chat />} />
+          <Route path="/users" element={<Users />} />
         </Routes>
       </main>
     </BrowserRouter>

@@ -9,6 +9,9 @@ export const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('access_token');
+  if (token && config.headers) config.headers.Authorization = `Bearer ${token}`;
+
   const url = `${config.baseURL}${config.url}`;
   console.group(`%c⬆ ${config.method?.toUpperCase()} ${url}`, 'color:#EA580C;font-weight:bold');
   if (config.data) console.log('payload:', config.data);
@@ -257,6 +260,32 @@ export const prospectsApi = {
   create: (body: Omit<Prospect, 'id' | 'created_at'>)                        => api.post<Prospect>('/prospects', body),
   update: (body: Partial<Prospect> & { id: string })                         => api.post<Prospect>('/prospects/update', body),
   delete: (id: string)                                                        => api.post('/prospects/delete', { id }),
+};
+
+// ─── AUTH / USERS ────────────────────────────────────────────────────────────
+
+export type UserRole = 'admin' | 'vendedor' | 'usuario';
+
+export interface SystemUser {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  created_at: string;
+}
+
+export interface CreateUserDTO {
+  name: string;
+  email: string;
+  password: string;
+  role: UserRole;
+}
+
+export const authApi = {
+  createUser: (body: CreateUserDTO) =>
+    api.post<SystemUser>('/auth/users', body),
+  listUsers: () =>
+    api.get<SystemUser[]>('/auth/users'),
 };
 
 // ─── AGENTS ───────────────────────────────────────────────────────────────────

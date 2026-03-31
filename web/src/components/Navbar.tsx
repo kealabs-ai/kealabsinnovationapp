@@ -1,11 +1,13 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Sun, Moon, Settings, MessageSquare } from 'lucide-react';
+import { Sun, Moon, Settings, MessageSquare, UserCircle2 } from 'lucide-react';
 import keaLogo from '../assets/kealabs_logo_strategic.png';
 import { useTheme } from '../lib/useTheme';
+import { useUser } from '../lib/useUser';
 
 export function Navbar() {
   const { pathname } = useLocation();
   const { dark, toggle } = useTheme();
+  const { user } = useUser();
 
   const link = (to: string, label: string) => (
     <Link to={to} style={pathname === to ? {} : { color: 'var(--kea-body)' }}
@@ -49,6 +51,31 @@ export function Navbar() {
             title={dark ? 'Tema claro' : 'Tema escuro'}>
             {dark ? <Sun size={16} /> : <Moon size={16} />}
           </button>
+
+          {/* Avatar + nome do usuário */}
+          <Link to="/users"
+            className="ml-2 flex items-center gap-2 px-3 py-1.5 rounded-xl transition-all hover:text-orange-600"
+            style={{
+              border: '1px solid var(--kea-border)',
+              background: pathname === '/users' ? '#FFF1E6' : undefined,
+              borderColor: pathname === '/users' ? '#EA580C' : undefined,
+            }}
+            title="Meu Perfil">
+            {user.avatarUrl ? (
+              <img src={user.avatarUrl} alt={user.name}
+                className="w-6 h-6 rounded-full object-cover flex-shrink-0"
+                style={{ border: '1.5px solid #EA580C' }} />
+            ) : (
+              <UserCircle2 size={18} className={pathname === '/users' ? 'text-orange-600' : ''}
+                style={pathname === '/users' ? {} : { color: 'var(--kea-body)' }} />
+            )}
+            {user.name && (
+              <span className="text-sm font-bold hidden md:block"
+                style={{ color: pathname === '/users' ? '#EA580C' : 'var(--kea-heading)' }}>
+                {user.name.split(' ')[0]}
+              </span>
+            )}
+          </Link>
         </nav>
       </div>
     </header>
