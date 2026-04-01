@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Unauthorized } from './Unauthorized';
 
 function isAuthenticated(): boolean {
@@ -12,5 +12,12 @@ function isAuthenticated(): boolean {
 }
 
 export function AuthGuard({ children }: { children: ReactNode }) {
-  return isAuthenticated() ? <>{children}</> : <Unauthorized />;
+  const [auth, setAuth] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    setAuth(isAuthenticated());
+  }, []);
+
+  if (auth === null) return null;
+  return auth ? <>{children}</> : <Unauthorized />;
 }

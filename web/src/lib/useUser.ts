@@ -7,7 +7,7 @@ export interface UserProfile {
   avatarUrl?: string;
 }
 
-const STORAGE_KEY = 'keaflow-user';
+const STORAGE_KEY = 'user';
 
 const DEFAULT: UserProfile = { name: '', email: '', role: '' };
 
