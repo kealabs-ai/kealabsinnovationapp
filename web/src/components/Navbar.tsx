@@ -1,8 +1,14 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Sun, Moon, Settings, MessageSquare, UserCircle2 } from 'lucide-react';
+import { Sun, Moon, Settings, MessageSquare, UserCircle2, LogOut } from 'lucide-react';
 import keaLogo from '../assets/kealabs_logo_strategic.png';
 import { useTheme } from '../lib/useTheme';
 import { useUser } from '../lib/useUser';
+
+function handleLogout() {
+  localStorage.removeItem('access_token');
+  localStorage.removeItem('user');
+  window.location.href = 'https://www.kealabs.com.br/login';
+}
 
 export function Navbar() {
   const { pathname } = useLocation();
@@ -10,7 +16,8 @@ export function Navbar() {
   const { user } = useUser();
 
   const link = (to: string, label: string) => (
-    <Link to={to} style={pathname === to ? {} : { color: 'var(--kea-body)' }}
+    <Link to={to}
+      style={{ color: pathname === to ? undefined : 'var(--kea-body)' }}
       className={`px-4 py-2 rounded-xl text-sm font-bold transition-colors ${
         pathname === to ? 'bg-orange-600 text-white' : 'hover:text-orange-600'
       }`}>
@@ -18,65 +25,90 @@ export function Navbar() {
     </Link>
   );
 
+  const iconBtn = (active: boolean) =>
+    `p-2 rounded-xl transition-all hover:text-orange-600 ${
+      active ? 'bg-orange-600 text-white' : ''
+    }`;
+
   return (
-    <header className="sticky top-0 z-50 backdrop-blur shadow-sm"
-      style={{ backgroundColor: 'color-mix(in srgb, var(--kea-surface) 90%, transparent)', borderBottom: '1px solid var(--kea-border)' }}>
-      <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-        <div className="flex items-center">
-          <img src={keaLogo} alt="KeaLabs" className="h-8 w-auto" />
-        </div>
-        <nav className="flex items-center gap-2">
+    <header className="sticky top-0 z-50 backdrop-blur-md shadow-md"
+      style={{
+        backgroundColor: 'color-mix(in srgb, var(--kea-surface) 92%, transparent)',
+        borderBottom: '1px solid var(--kea-border)',
+      }}>
+      <div className="max-w-7xl mx-auto px-8 h-20 flex items-center justify-between gap-6">
+
+        {/* Logo */}
+        <img src={keaLogo} alt="KeaLabs" className="h-10 w-auto flex-shrink-0" />
+
+        {/* Links de navegação */}
+        <nav className="flex items-center gap-1">
           {link('/', 'Dashboard')}
           {link('/builder', 'Novo Orçamento')}
           {link('/prospects', 'Prospects')}
-          <Link to="/chat"
-            className={`p-2 rounded-xl transition-all hover:text-orange-600 ${
-              pathname === '/chat' ? 'bg-orange-600 text-white' : ''
-            }`}
-            style={pathname === '/chat' ? {} : { border: '1px solid var(--kea-border)', color: 'var(--kea-body)' }}
+        </nav>
+
+        {/* Ações à direita */}
+        <div className="flex items-center gap-3 ml-auto">
+
+          {/* Chat */}
+          <Link to="/chat" className={iconBtn(pathname === '/chat')}
+            style={pathname === '/chat' ? {} : { color: 'var(--kea-body)' }}
             title="Chat Comercial">
-            <MessageSquare size={16} />
+            <MessageSquare size={18} />
           </Link>
-          <Link to="/settings"
-            className={`p-2 rounded-xl transition-all hover:text-orange-600 ${
-              pathname === '/settings' ? 'bg-orange-600 text-white' : ''
-            }`}
-            style={pathname === '/settings' ? {} : { border: '1px solid var(--kea-border)', color: 'var(--kea-body)' }}
+
+          {/* Settings */}
+          <Link to="/settings" className={iconBtn(pathname === '/settings')}
+            style={pathname === '/settings' ? {} : { color: 'var(--kea-body)' }}
             title="Parametrizações">
-            <Settings size={16} />
+            <Settings size={18} />
           </Link>
-          <button onClick={toggle}
-            className="ml-2 p-2 rounded-xl transition-all hover:text-orange-600"
-            style={{ border: '1px solid var(--kea-border)', color: 'var(--kea-body)' }}
+
+          {/* Tema */}
+          <button onClick={toggle} className={iconBtn(false)}
+            style={{ color: 'var(--kea-body)' }}
             title={dark ? 'Tema claro' : 'Tema escuro'}>
-            {dark ? <Sun size={16} /> : <Moon size={16} />}
+            {dark ? <Sun size={18} /> : <Moon size={18} />}
           </button>
 
-          {/* Avatar + nome do usuário */}
-          <Link to="/users"
-            className="ml-2 flex items-center gap-2 px-3 py-1.5 rounded-xl transition-all hover:text-orange-600"
-            style={{
-              border: '1px solid var(--kea-border)',
-              background: pathname === '/users' ? '#FFF1E6' : undefined,
-              borderColor: pathname === '/users' ? '#EA580C' : undefined,
-            }}
-            title="Meu Perfil">
+          {/* Divider */}
+          <span className="w-px h-8 mx-1" style={{ background: 'var(--kea-border)' }} />
+
+          {/* Avatar */}
+          <Link to="/users" title="Meu Perfil"
+            className="flex items-center gap-3 px-3 py-1.5 rounded-2xl transition-all hover:bg-orange-50 dark:hover:bg-orange-950/30"
+            style={{ background: pathname === '/users' ? 'var(--kea-border)' : undefined }}>
             {user.avatarUrl ? (
               <img src={user.avatarUrl} alt={user.name}
-                className="w-6 h-6 rounded-full object-cover flex-shrink-0"
-                style={{ border: '1.5px solid #EA580C' }} />
+                className="w-10 h-10 rounded-full object-cover flex-shrink-0 ring-2 ring-orange-500" />
             ) : (
-              <UserCircle2 size={18} className={pathname === '/users' ? 'text-orange-600' : ''}
-                style={pathname === '/users' ? {} : { color: 'var(--kea-body)' }} />
+              <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ring-2 ring-orange-500"
+                style={{ background: 'linear-gradient(135deg, #EA580C, #F97316)' }}>
+                <UserCircle2 size={22} className="text-white" />
+              </div>
             )}
             {user.name && (
-              <span className="text-sm font-bold hidden md:block"
-                style={{ color: pathname === '/users' ? '#EA580C' : 'var(--kea-heading)' }}>
-                {user.name.split(' ')[0]}
-              </span>
+              <div className="hidden md:flex flex-col leading-tight">
+                <span className="text-sm font-bold" style={{ color: 'var(--kea-heading)' }}>
+                  {user.name.split(' ')[0]}
+                </span>
+                {user.role && (
+                  <span className="text-xs" style={{ color: 'var(--kea-subtle)' }}>
+                    {user.role}
+                  </span>
+                )}
+              </div>
             )}
           </Link>
-        </nav>
+
+          {/* Sair */}
+          <button onClick={handleLogout} title="Sair do sistema"
+            className="p-2 rounded-xl transition-all hover:text-red-500"
+            style={{ color: 'var(--kea-subtle)' }}>
+            <LogOut size={18} />
+          </button>
+        </div>
       </div>
     </header>
   );
