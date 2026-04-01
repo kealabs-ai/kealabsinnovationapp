@@ -1,5 +1,5 @@
+import { Navigate } from 'react-router-dom';
 import type { ReactNode } from 'react';
-import { Unauthorized } from './Unauthorized';
 
 function isAuthenticated(): boolean {
   try {
@@ -12,6 +12,5 @@ function isAuthenticated(): boolean {
 }
 
 export function AuthGuard({ children }: { children: ReactNode }) {
-  const auth = isAuthenticated();
-  return auth ? <>{children}</> : <Unauthorized />;
+  return isAuthenticated() ? <>{children}</> : <Navigate to="/login" replace />;
 }

@@ -1,19 +1,20 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Sun, Moon, Settings, MessageSquare, UserCircle2, LogOut } from 'lucide-react';
 import keaLogo from '../assets/kealabs_logo_strategic.png';
 import { useTheme } from '../lib/useTheme';
 import { useUser } from '../lib/useUser';
 
-function handleLogout() {
-  localStorage.removeItem('access_token');
-  localStorage.removeItem('user');
-  window.location.href = 'https://www.kealabs.com.br/login';
-}
-
 export function Navbar() {
   const { pathname } = useLocation();
+  const navigate = useNavigate();
   const { dark, toggle } = useTheme();
   const { user } = useUser();
+
+  function handleLogout() {
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('user');
+    navigate('/login', { replace: true });
+  }
 
   const link = (to: string, label: string) => (
     <Link to={to}

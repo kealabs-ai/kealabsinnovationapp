@@ -281,7 +281,19 @@ export interface CreateUserDTO {
   role: UserRole;
 }
 
+export interface LoginDTO {
+  email: string;
+  password: string;
+}
+
+export interface LoginResponse {
+  access_token: string;
+  user: SystemUser;
+}
+
 export const authApi = {
+  login: (body: LoginDTO) =>
+    api.post<LoginResponse>('/auth/login', body),
   createUser: (body: CreateUserDTO) =>
     api.post<SystemUser>('/auth/users', body),
   listUsers: () =>
