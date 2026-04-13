@@ -152,6 +152,11 @@ export function Settings() {
             {field('Ciclo de dias', 'installmentCicloDias', { suffix: 'dias', min: 1 })}
           </>)}
 
+          {section('💼 Comissão', <>
+            {field('Taxa de comissão', 'commissionRate', { step: 0.5, min: 0, suffix: '%',
+              toDisplay: (v) => v, fromInput: (v) => v })}
+          </>)}
+
           {section('🖥️ Hospedagem — Mensalidade', <>
             {field('Single', 'hostingSingle', { prefix: 'R$', step: 0.01 })}
             {field('Premium', 'hostingPremium', { prefix: 'R$', step: 0.01 })}

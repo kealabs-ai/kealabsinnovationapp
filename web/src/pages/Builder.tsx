@@ -262,6 +262,8 @@ export function Builder() {
 
   const maxInstallments = settings.installmentLimit;
 
+  const commissionValue = parseFloat((preview.setup * (settings.commissionRate / 100)).toFixed(2));
+
   // Card selecionável genérico
   const SelectCard = ({
     active, onClick, children, className = '',
@@ -552,6 +554,16 @@ export function Builder() {
             })()}
           </div>
         </div>
+        {settings.commissionRate > 0 && (
+          <div className="flex items-center justify-between rounded-xl px-4 py-3"
+            style={{ background: '#FEF9C3', border: '1px solid #FDE047' }}>
+            <div>
+              <p className="text-xs font-black uppercase tracking-wider" style={{ color: '#854D0E' }}>Comissão ({settings.commissionRate}%)</p>
+              <p className="text-xs mt-0.5" style={{ color: '#92400E' }}>Não incluso no PDF da proposta</p>
+            </div>
+            <p className="text-xl font-black" style={{ color: '#854D0E' }}>{fmt(commissionValue)}</p>
+          </div>
+        )}
         <div>
           <label className="label">Número de parcelas</label>
           <div className="flex items-center gap-4">

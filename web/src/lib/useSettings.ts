@@ -46,6 +46,7 @@ export interface ServiceSettings {
   installmentTaxaFixa: number;
   installmentAntecipacaoMensal: number;
   installmentCicloDias: number;
+  commissionRate: number;
 }
 
 // Mapa: chave do frontend → setting_key no banco
@@ -78,6 +79,7 @@ const KEY_MAP: Record<keyof ServiceSettings, string> = {
   installmentTaxaFixa: 'installment_taxa_fixa',
   installmentAntecipacaoMensal: 'installment_antecipacao_mensal',
   installmentCicloDias: 'installment_ciclo_dias',
+  commissionRate: 'commission_rate',
 };
 
 export const DEFAULTS: ServiceSettings = {
@@ -103,6 +105,7 @@ export const DEFAULTS: ServiceSettings = {
   installmentTaxaFixa: 0.49,
   installmentAntecipacaoMensal: 1.7,
   installmentCicloDias: 32,
+  commissionRate: 0,
 };
 
 const CACHE_KEY = 'keaflow-settings';
