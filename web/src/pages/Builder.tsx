@@ -57,6 +57,9 @@ export function Builder() {
   const [n8n, setN8n]                       = useState(false);
   const [wpp, setWpp]                       = useState(false);
   const [agileSetup, setAgileSetup]         = useState(false);
+  const [consultorArea, setConsultorArea]   = useState(false);
+  const [pandaVideos, setPandaVideos]       = useState(false);
+  const [bunneyNet, setBunneyNet]           = useState(false);
   const [mentoringHours, setMentoringHours] = useState(0);
   const [hosting, setHosting]               = useState<HostingPlan | ''>('');
   const [installments, setInstallments]     = useState(12);
@@ -80,6 +83,9 @@ export function Builder() {
     agileSetup: agileSetup || undefined,
     agileMentoringHours: mentoringHours > 0 ? mentoringHours : undefined,
     hosting: hosting ? hosting : undefined,
+    consultorArea: consultorArea || undefined,
+    pandaVideos: pandaVideos || undefined,
+    bunneyNet: bunneyNet || undefined,
   });
 
   const MODULE_PRICES = {
@@ -87,6 +93,9 @@ export function Builder() {
     wpp: settings.moduleWhatsapp,
     agile: settings.moduleAgileSetup,
     mentoring: settings.moduleMentoringHour,
+    consultorArea: 1200,
+    pandaVideos: 300,
+    bunneyNet: 200,
   };
 
   const toggleSource = (s: BISource) => {
@@ -113,6 +122,9 @@ export function Builder() {
     if (n8n) setup += MODULE_PRICES.n8n;
     if (wpp) setup += MODULE_PRICES.wpp;
     if (agileSetup) setup += MODULE_PRICES.agile;
+    if (consultorArea) setup += MODULE_PRICES.consultorArea;
+    if (pandaVideos) setup += MODULE_PRICES.pandaVideos;
+    if (bunneyNet) setup += MODULE_PRICES.bunneyNet;
     if (mentoringHours > 0) setup += mentoringHours * MODULE_PRICES.mentoring;
     const agentMonthly = serviceType === 'AI_AGENT' ? AGENT_PLANS[agentPlan].monthly : 0;
     const monthly = setup * settings.monthlySupportRate + (hosting ? (HOSTING_PRICES[hosting] ?? 0) : 0) + agentMonthly;
@@ -345,13 +357,16 @@ export function Builder() {
     }
 
     // ── MÓDULOS ───────────────────────────────────────────────────────────────
-    const hasMods = n8n || wpp || agileSetup || mentoringHours > 0;
+    const hasMods = n8n || wpp || agileSetup || consultorArea || pandaVideos || bunneyNet || mentoringHours > 0;
     if (hasMods) {
       sectionTitle('Módulos Adicionais');
-      if (n8n)              row('n8n Automation',          fmt(MODULE_PRICES.n8n),                                    false);
-      if (wpp)              row('WhatsApp Gateway',         fmt(MODULE_PRICES.wpp),                                    true);
-      if (agileSetup)       row('Agile Setup',              fmt(MODULE_PRICES.agile),                                  n8n || wpp ? false : false);
-      if (mentoringHours>0) row(`Mentoria Ágil (${mentoringHours}h)`, fmt(mentoringHours * MODULE_PRICES.mentoring), true);
+      if (n8n)              row('n8n Automation',              fmt(MODULE_PRICES.n8n),                                    false);
+      if (wpp)              row('WhatsApp Gateway',             fmt(MODULE_PRICES.wpp),                                    true);
+      if (agileSetup)       row('Agile Setup',                  fmt(MODULE_PRICES.agile),                                  false);
+      if (consultorArea)    row('Consultor / Área do Aluno',    fmt(MODULE_PRICES.consultorArea),                          true);
+      if (pandaVideos)      row('Panda Videos',                 fmt(MODULE_PRICES.pandaVideos),                            false);
+      if (bunneyNet)        row('Bunny.net (CDN de Vídeo)',     fmt(MODULE_PRICES.bunneyNet),                              true);
+      if (mentoringHours>0) row(`Mentoria Ágil (${mentoringHours}h)`, fmt(mentoringHours * MODULE_PRICES.mentoring),   false);
     }
 
     // ── HOSPEDAGEM ────────────────────────────────────────────────────────────
@@ -746,9 +761,12 @@ export function Builder() {
         <h2 className="font-black text-lg" style={{ color: 'var(--kea-heading)' }}>Módulos Adicionais</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {([
-            { state: n8n,        set: setN8n,        icon: Workflow,      label: 'n8n Automation',   price: fmt(MODULE_PRICES.n8n),   desc: 'Automação de fluxos'  },
-            { state: wpp,        set: setWpp,        icon: MessageCircle, label: 'WhatsApp Gateway', price: fmt(MODULE_PRICES.wpp),   desc: 'Canal de mensagens'   },
-            { state: agileSetup, set: setAgileSetup, icon: Rocket,        label: 'Agile Setup',      price: fmt(MODULE_PRICES.agile), desc: 'Metodologia ágil'     },
+            { state: n8n,          set: setN8n,          icon: Workflow,      label: 'n8n Automation',          price: fmt(MODULE_PRICES.n8n),          desc: 'Automação de fluxos'              },
+            { state: wpp,          set: setWpp,          icon: MessageCircle, label: 'WhatsApp Gateway',         price: fmt(MODULE_PRICES.wpp),          desc: 'Canal de mensagens'               },
+            { state: agileSetup,   set: setAgileSetup,   icon: Rocket,        label: 'Agile Setup',             price: fmt(MODULE_PRICES.agile),        desc: 'Metodologia ágil'                 },
+            { state: consultorArea,set: setConsultorArea,icon: BookOpen,      label: 'Consultor / Área do Aluno',price: fmt(MODULE_PRICES.consultorArea),desc: 'Portal de cursos e área de membros'},
+            { state: pandaVideos,  set: setPandaVideos,  icon: Sparkles,      label: 'Panda Videos',            price: fmt(MODULE_PRICES.pandaVideos),  desc: 'Hospedagem de vídeos Panda'       },
+            { state: bunneyNet,    set: setBunneyNet,    icon: Server,        label: 'Bunny.net',               price: fmt(MODULE_PRICES.bunneyNet),    desc: 'CDN de vídeo Bunny.net'           },
           ]).map(({ state, set, icon: Icon, label, price, desc }) => (
             <SelectCard key={label} active={state} onClick={() => set(!state)}>
               <div className="flex items-start justify-between mb-2">

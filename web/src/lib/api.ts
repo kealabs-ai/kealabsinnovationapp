@@ -70,6 +70,9 @@ export interface Modules {
   agileSetup?: boolean;
   agileMentoringHours?: number;
   hosting?: HostingPlan;
+  consultorArea?: boolean;
+  pandaVideos?: boolean;
+  bunneyNet?: boolean;
 }
 
 export interface WebPricingInput      { serviceType: 'WEB';       menuCount: number; includeAsaasIntegration: boolean; modules?: Modules; }
