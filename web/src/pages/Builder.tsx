@@ -61,7 +61,9 @@ export function Builder() {
   const [pandaVideos, setPandaVideos]       = useState(false);
   const [bunneyNet, setBunneyNet]           = useState(false);
   const [mentoringHours, setMentoringHours] = useState(0);
-  const [hosting, setHosting]               = useState<HostingPlan | ''>('');
+  const [hostings, setHostings]             = useState<Set<HostingPlan>>(new Set());
+  const [pandaPlan, setPandaPlan]           = useState<'starter' | 'pro' | 'scale' | ''>('');
+  const [bunneyPlan, setBunneyPlan]         = useState<'pay-as-you-go' | 'starter' | 'pro' | ''>('');
   const [installments, setInstallments]     = useState(12);
 
   const AGENT_PLANS: Record<AgentPlan, { setup: number; monthly: number; model: string; agents: string; msgs: string; memory: string; desc: string; icon: React.ElementType; badge?: string }> = {
@@ -82,7 +84,7 @@ export function Builder() {
     whatsappGateway: wpp || undefined,
     agileSetup: agileSetup || undefined,
     agileMentoringHours: mentoringHours > 0 ? mentoringHours : undefined,
-    hosting: hosting ? hosting : undefined,
+    hosting: hostings.size > 0 ? Array.from(hostings)[0] as HostingPlan : undefined,
     consultorArea: consultorArea || undefined,
     pandaVideos: pandaVideos || undefined,
     bunneyNet: bunneyNet || undefined,
@@ -96,6 +98,18 @@ export function Builder() {
     consultorArea: 1200,
     pandaVideos: 300,
     bunneyNet: 200,
+  };
+
+  const PANDA_PLANS: Record<'starter' | 'pro' | 'scale', { label: string; storage: string; bandwidth: string; monthly: number; badge?: string }> = {
+    starter: { label: 'Starter',  storage: '50GB',    bandwidth: '200GB/mês',  monthly: 97  },
+    pro:     { label: 'Pro',      storage: '200GB',   bandwidth: '1TB/mês',    monthly: 197, badge: 'Popular' },
+    scale:   { label: 'Scale',    storage: '1TB',     bandwidth: 'Ilimitada',  monthly: 397 },
+  };
+
+  const BUNNEY_PLANS: Record<'pay-as-you-go' | 'starter' | 'pro', { label: string; storage: string; bandwidth: string; monthly: number }> = {
+    'pay-as-you-go': { label: 'Pay-as-you-go', storage: 'Ilimitado', bandwidth: 'R$ 0,08/GB',  monthly: 0   },
+    starter:         { label: 'Starter',        storage: '100GB',     bandwidth: '500GB/mês',   monthly: 79  },
+    pro:             { label: 'Pro',             storage: '500GB',     bandwidth: '2TB/mês',     monthly: 179 },
   };
 
   const toggleSource = (s: BISource) => {
@@ -127,7 +141,10 @@ export function Builder() {
     if (bunneyNet) setup += MODULE_PRICES.bunneyNet;
     if (mentoringHours > 0) setup += mentoringHours * MODULE_PRICES.mentoring;
     const agentMonthly = serviceType === 'AI_AGENT' ? AGENT_PLANS[agentPlan].monthly : 0;
-    const monthly = setup * settings.monthlySupportRate + (hosting ? (HOSTING_PRICES[hosting] ?? 0) : 0) + agentMonthly;
+    const hostingMonthly = Array.from(hostings).reduce((sum, h) => sum + (HOSTING_PRICES[h] ?? 0), 0);
+    const pandaMonthly   = pandaPlan   ? PANDA_PLANS[pandaPlan].monthly   : 0;
+    const bunneyMonthly  = bunneyPlan  ? BUNNEY_PLANS[bunneyPlan].monthly  : 0;
+    const monthly = setup * settings.monthlySupportRate + hostingMonthly + agentMonthly + pandaMonthly + bunneyMonthly;
     return { setup: parseFloat(setup.toFixed(2)), monthly: parseFloat(monthly.toFixed(2)) };
   })();
 
@@ -370,38 +387,48 @@ export function Builder() {
     }
 
     // ── HOSPEDAGEM ────────────────────────────────────────────────────────────
-    if (hosting) {
+    if (hostings.size > 0) {
       const hostingLabels: Record<string, { label: string; spec: string; type: string }> = {
-        'single':      { label: 'Single',      spec: '1 site · 10GB SSD · 100GB banda',       type: 'Compartilhada' },
-        'premium':     { label: 'Premium',     spec: '5 sites · 20GB SSD · 200GB banda',      type: 'Compartilhada' },
-        'business':    { label: 'Business',    spec: 'Sites ilimitados · 50GB SSD',            type: 'Compartilhada' },
-        'vps-starter': { label: 'VPS Starter', spec: '2 vCPU · 4GB RAM · 80GB SSD',          type: 'VPS' },
-        'vps-pro':     { label: 'VPS Pro',     spec: '4 vCPU · 8GB RAM · 160GB SSD',         type: 'VPS' },
-        'vps-ultra':   { label: 'VPS Ultra',   spec: '8 vCPU · 16GB RAM · 320GB SSD',        type: 'VPS' },
+        'single':      { label: 'Single',      spec: '1 site · 10GB SSD · 100GB banda',  type: 'Compartilhada' },
+        'premium':     { label: 'Premium',     spec: '5 sites · 20GB SSD · 200GB banda', type: 'Compartilhada' },
+        'business':    { label: 'Business',    spec: 'Sites ilimitados · 50GB SSD',       type: 'Compartilhada' },
+        'vps-starter': { label: 'VPS Starter', spec: '2 vCPU · 4GB RAM · 80GB SSD',     type: 'VPS' },
+        'vps-pro':     { label: 'VPS Pro',     spec: '4 vCPU · 8GB RAM · 160GB SSD',    type: 'VPS' },
+        'vps-ultra':   { label: 'VPS Ultra',   spec: '8 vCPU · 16GB RAM · 320GB SSD',   type: 'VPS' },
       };
-      const h = hostingLabels[hosting];
-      sectionTitle('Plano de Hospedagem');
-
-      // Caixa de aviso
+      sectionTitle('Planos de Hospedagem');
       doc.setFillColor(255, 247, 237);
-      doc.setDrawColor(...O);
-      doc.setLineWidth(0.4);
-      doc.roundedRect(14, y, 182, 22, 2, 2, 'FD');
+      doc.setDrawColor(...O); doc.setLineWidth(0.4);
+      doc.roundedRect(14, y, 182, 14, 2, 2, 'FD');
       doc.setTextColor(...O); doc.setFont('helvetica', 'bold'); doc.setFontSize(8);
-      doc.text('⚠  ATENÇÃO: Serviço a ser contratado diretamente pelo cliente', 18, y + 7);
-      doc.setTextColor(...D); doc.setFont('helvetica', 'normal'); doc.setFontSize(8);
-      doc.text('Este plano de hospedagem é recomendado na plataforma Hostinger (hostinger.com.br).', 18, y + 13);
-      doc.text('O cliente deverá contratar e gerenciar este serviço de forma independente.', 18, y + 19);
-      y += 27;
-
-      row('Provedor recomendado', 'Hostinger (hostinger.com.br)', false);
-      row('Plano', `${h.label} — ${h.type}`, true);
-      row('Especificações', h.spec, false);
-      row('Mensalidade estimada', fmt(HOSTING_PRICES[hosting]), true, true);
-
-      // badge verde
+      doc.text('⚠  Serviços a serem contratados diretamente pelo cliente na Hostinger (hostinger.com.br)', 18, y + 9);
+      y += 19;
+      Array.from(hostings).forEach((h, i) => {
+        const hl = hostingLabels[h];
+        row(`${hl.label} (${hl.type})`, fmt(HOSTING_PRICES[h]) + '/mês', i % 2 === 0);
+      });
       badge('RECOMENDADO PELA KEALABS', 17, y - 2, GR);
       y += 4;
+    }
+
+    // ── PANDA VIDEOS ─────────────────────────────────────────────────────────
+    if (pandaPlan) {
+      const pp = PANDA_PLANS[pandaPlan];
+      sectionTitle('Panda Videos');
+      row('Plano', pp.label, false);
+      row('Armazenamento', pp.storage, true);
+      row('Banda', pp.bandwidth, false);
+      row('Mensalidade', fmt(pp.monthly) + '/mês', true, true);
+    }
+
+    // ── BUNNY.NET ─────────────────────────────────────────────────────────────
+    if (bunneyPlan) {
+      const bp = BUNNEY_PLANS[bunneyPlan];
+      sectionTitle('Bunny.net CDN');
+      row('Plano', bp.label, false);
+      row('Armazenamento', bp.storage, true);
+      row('Banda', bp.bandwidth, false);
+      row('Mensalidade', bp.monthly > 0 ? fmt(bp.monthly) + '/mês' : 'Sob demanda', true, true);
     }
 
     // ── RESUMO FINANCEIRO ─────────────────────────────────────────────────────
@@ -431,9 +458,13 @@ export function Builder() {
     doc.setTextColor(...G); doc.setFont('helvetica', 'italic'); doc.setFontSize(7.5);
     const totalParc = calcInstallment(preview.setup, installments) * installments;
     const jurosInfo = ` com ${(asaasRate(installments) * 100).toFixed(2)}% a.m. + R$ 0,49 Asaas/parcela (total ${fmt(totalParc)})`;
-    doc.text(`* Setup de ${fmt(preview.setup)} parcelado em ${installments}x de ${fmt(calcInstallment(preview.setup, installments))}${jurosInfo}. Mensalidade de suporte: ${fmt(preview.monthly)}${hosting ? ` + hospedagem ${fmt(HOSTING_PRICES[hosting])}/mês` : ''}.`, 14, y);
+    const hostingMonthlyPDF = Array.from(hostings).reduce((sum, h) => sum + (HOSTING_PRICES[h] ?? 0), 0);
+    const pandaMonthlyPDF   = pandaPlan  ? PANDA_PLANS[pandaPlan].monthly  : 0;
+    const bunneyMonthlyPDF  = bunneyPlan ? BUNNEY_PLANS[bunneyPlan].monthly : 0;
+    const totalMonthlyPDF   = preview.monthly;
+    doc.text(`* Setup de ${fmt(preview.setup)} parcelado em ${installments}x de ${fmt(calcInstallment(preview.setup, installments))}${jurosInfo}. Mensalidade total: ${fmt(totalMonthlyPDF)}${hostingMonthlyPDF > 0 ? ` (incl. hospedagem ${fmt(hostingMonthlyPDF)}/mês)` : ''}${pandaMonthlyPDF > 0 ? ` + Panda ${fmt(pandaMonthlyPDF)}/mês` : ''}${bunneyMonthlyPDF > 0 ? ` + Bunny ${fmt(bunneyMonthlyPDF)}/mês` : ''}.`, 14, y);
     y += 6;
-    if (hosting) {
+    if (hostings.size > 0) {
       doc.text('* O valor da hospedagem é uma estimativa. O cliente contrata diretamente na Hostinger e pode variar conforme promoções.', 14, y);
       y += 5;
     }
@@ -792,23 +823,28 @@ export function Builder() {
 
         {/* Hospedagem */}
         <div>
-          <label className="label"><Server size={13} className="inline mr-1.5 opacity-70" />Plano de Hospedagem</label>
+          <label className="label"><Server size={13} className="inline mr-1.5 opacity-70" />Plano de Hospedagem <span className="normal-case font-normal" style={{ color: 'var(--kea-body)' }}>(múltipla seleção)</span></label>
 
           <p className="text-[11px] uppercase tracking-wider mb-2 mt-1" style={{ color: 'var(--kea-subtle)' }}>Compartilhada</p>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-4">
             {([
-              { key: '',         icon: Ban,       label: 'Nenhum',   price: '—',             desc: 'Sem hospedagem'    },
               { key: 'single',   icon: HardDrive, label: 'Single',   price: fmt(settings.hostingSingle),   desc: '1 site · 10GB'    },
               { key: 'premium',  icon: HardDrive, label: 'Premium',  price: fmt(settings.hostingPremium),  desc: '5 sites · 20GB'   },
               { key: 'business', icon: HardDrive, label: 'Business', price: fmt(settings.hostingBusiness), desc: 'Ilimitado · 50GB' },
-            ] as { key: HostingPlan | ''; icon: React.ElementType; label: string; price: string; desc: string }[]).map(({ key, icon: Icon, label, price, desc }) => (
-              <SelectCard key={key} active={hosting === key} onClick={() => setHosting(key)}>
-                <Icon size={16} className={`mb-1.5 ${ic(hosting === key)}`} />
-                <p className="font-bold text-sm">{label}</p>
-                <p className="text-[11px] mt-0.5" style={{ color: 'var(--kea-body)' }}>{desc}</p>
-                <p className="text-xs font-bold text-orange-600 mt-1.5">{price}</p>
-              </SelectCard>
-            ))}
+            ] as { key: HostingPlan; icon: React.ElementType; label: string; price: string; desc: string }[]).map(({ key, icon: Icon, label, price, desc }) => {
+              const active = hostings.has(key);
+              return (
+                <SelectCard key={key} active={active} onClick={() => setHostings(prev => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; })}>
+                  <div className="flex items-start justify-between mb-1.5">
+                    <Icon size={16} className={ic(active)} />
+                    <Checkbox checked={active} />
+                  </div>
+                  <p className="font-bold text-sm">{label}</p>
+                  <p className="text-[11px] mt-0.5" style={{ color: 'var(--kea-body)' }}>{desc}</p>
+                  <p className="text-xs font-bold text-orange-600 mt-1.5">{price}/mês</p>
+                </SelectCard>
+              );
+            })}
           </div>
 
           <p className="text-[11px] uppercase tracking-wider mb-2" style={{ color: 'var(--kea-subtle)' }}>VPS Escalável</p>
@@ -817,19 +853,89 @@ export function Builder() {
               { key: 'vps-starter', icon: Server, label: 'VPS Starter', price: fmt(settings.hostingVpsStarter), desc: '2 vCPU · 4GB · 80GB SSD'   },
               { key: 'vps-pro',     icon: Cpu,    label: 'VPS Pro',     price: fmt(settings.hostingVpsPro),     desc: '4 vCPU · 8GB · 160GB SSD'  },
               { key: 'vps-ultra',   icon: Zap,    label: 'VPS Ultra',   price: fmt(settings.hostingVpsUltra),   desc: '8 vCPU · 16GB · 320GB SSD' },
-            ] as { key: HostingPlan; icon: React.ElementType; label: string; price: string; desc: string }[]).map(({ key, icon: Icon, label, price, desc }) => (
-              <SelectCard key={key} active={hosting === key} onClick={() => setHosting(key)}>
-                <div className="flex items-start justify-between mb-2">
-                  <Icon size={18} className={ic(hosting === key)} />
-                  {hosting === key && <span className="w-4 h-4 bg-orange-600 rounded-full flex items-center justify-center"><span className="text-white text-[9px] font-black">✓</span></span>}
-                </div>
-                <p className="font-bold text-sm">{label}</p>
-                <p className="text-[11px] mt-0.5" style={{ color: 'var(--kea-body)' }}>{desc}</p>
-                <p className="text-xs font-bold text-orange-600 mt-2">{price}</p>
-              </SelectCard>
-            ))}
+            ] as { key: HostingPlan; icon: React.ElementType; label: string; price: string; desc: string }[]).map(({ key, icon: Icon, label, price, desc }) => {
+              const active = hostings.has(key);
+              return (
+                <SelectCard key={key} active={active} onClick={() => setHostings(prev => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; })}>
+                  <div className="flex items-start justify-between mb-2">
+                    <Icon size={18} className={ic(active)} />
+                    <Checkbox checked={active} />
+                  </div>
+                  <p className="font-bold text-sm">{label}</p>
+                  <p className="text-[11px] mt-0.5" style={{ color: 'var(--kea-body)' }}>{desc}</p>
+                  <p className="text-xs font-bold text-orange-600 mt-2">{price}/mês</p>
+                </SelectCard>
+              );
+            })}
           </div>
         </div>
+
+        {/* Panda Videos — planos mensais */}
+        {pandaVideos && (
+          <div>
+            <label className="label"><Sparkles size={13} className="inline mr-1.5 opacity-70" />Plano Panda Videos</label>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+              {(Object.entries(PANDA_PLANS) as [keyof typeof PANDA_PLANS, typeof PANDA_PLANS[keyof typeof PANDA_PLANS]][]).map(([key, plan]) => {
+                const active = pandaPlan === key;
+                return (
+                  <button key={key} onClick={() => setPandaPlan(active ? '' : key)}
+                    className="p-4 rounded-xl border-2 text-left transition-all duration-200 hover:border-orange-500 relative"
+                    style={cardStyle(active)}>
+                    {plan.badge && (
+                      <span className="absolute top-3 right-3 text-[10px] font-black px-2 py-0.5 rounded-full" style={{ background: '#EA580C', color: '#fff' }}>{plan.badge}</span>
+                    )}
+                    <div className="flex items-start justify-between mb-2">
+                      <Sparkles size={16} className={ic(active)} />
+                      <Checkbox checked={active} />
+                    </div>
+                    <p className="font-black text-sm">{plan.label}</p>
+                    <div className="flex flex-col gap-0.5 mt-1.5">
+                      {[{ l: 'Storage', v: plan.storage }, { l: 'Banda', v: plan.bandwidth }].map(({ l, v }) => (
+                        <div key={l} className="flex justify-between text-[11px]">
+                          <span style={{ color: 'var(--kea-subtle)' }}>{l}</span>
+                          <span className="font-bold" style={{ color: 'var(--kea-heading)' }}>{v}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-sm font-black text-orange-600 mt-2">{fmt(plan.monthly)}/mês</p>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Bunny.net — planos mensais */}
+        {bunneyNet && (
+          <div>
+            <label className="label"><Server size={13} className="inline mr-1.5 opacity-70" />Plano Bunny.net CDN</label>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+              {(Object.entries(BUNNEY_PLANS) as [keyof typeof BUNNEY_PLANS, typeof BUNNEY_PLANS[keyof typeof BUNNEY_PLANS]][]).map(([key, plan]) => {
+                const active = bunneyPlan === key;
+                return (
+                  <button key={key} onClick={() => setBunneyPlan(active ? '' : key)}
+                    className="p-4 rounded-xl border-2 text-left transition-all duration-200 hover:border-orange-500"
+                    style={cardStyle(active)}>
+                    <div className="flex items-start justify-between mb-2">
+                      <Server size={16} className={ic(active)} />
+                      <Checkbox checked={active} />
+                    </div>
+                    <p className="font-black text-sm">{plan.label}</p>
+                    <div className="flex flex-col gap-0.5 mt-1.5">
+                      {[{ l: 'Storage', v: plan.storage }, { l: 'Banda', v: plan.bandwidth }].map(({ l, v }) => (
+                        <div key={l} className="flex justify-between text-[11px]">
+                          <span style={{ color: 'var(--kea-subtle)' }}>{l}</span>
+                          <span className="font-bold" style={{ color: 'var(--kea-heading)' }}>{v}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-sm font-black text-orange-600 mt-2">{plan.monthly > 0 ? `${fmt(plan.monthly)}/mês` : 'Sob demanda'}</p>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="flex gap-3">
