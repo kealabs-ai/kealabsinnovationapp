@@ -166,7 +166,7 @@ export function Builder() {
     setLoading(true);
     const installmentPayload = {
       installments,
-      interest_rate: settings.installmentInterestRate,
+      interest_rate: mdrRate(installments),
       installment_value: calcInstallment(preview.setup, installments),
     };
     try {
@@ -216,17 +216,43 @@ export function Builder() {
 
   const ic = (on: boolean) => on ? 'text-orange-600' : 'text-orange-300 dark:text-brand-muted';
 
-  // Tabela de taxas Asaas (cartão de crédito online)
-  const ASAAS_FEE = 0.49;
-  const asaasRate = (n: number) =>
+  // ── Calculadora de Parcelamento (Markup sobre MDR + antecipação) ────────────
+  const TAXA_FIXA    = 0.49;
+  const TAXA_ANT_MES = 0.017;  // 1.7% a.m.
+  const CICLO_DIAS   = 32;
+
+  const mdrRate = (n: number) =>
     n === 1 ? 0.0299 : n <= 6 ? 0.0349 : n <= 12 ? 0.0399 : 0.0429;
 
-  // Juros simples, 1ª parcela isenta de juros
-  // P = (PV * (1 + i * (n-1))) / n + 0,49
-  const calcInstallment = (total: number, n: number) => {
-    const i = asaasRate(n);
-    const base = n === 1 ? total * (1 + i) : (total * (1 + i * (n - 1))) / n;
-    return parseFloat((base + ASAAS_FEE).toFixed(2));
+  // Valor a cobrar do cliente para receber `valorDesejado` líquido
+  const calcCobranca = (valorDesejado: number, n: number) => {
+    const mdr = mdrRate(n);
+    return parseFloat(((valorDesejado + TAXA_FIXA) / (1 - mdr)).toFixed(2));
+  };
+
+  // Valor líquido recebido sem antecipação
+  const calcLiquidoSemAnt = (valorBruto: number, n: number) => {
+    const mdr = mdrRate(n);
+    return parseFloat(((valorBruto * (1 - mdr)) - TAXA_FIXA).toFixed(2));
+  };
+
+  // Valor líquido recebido com antecipação (tudo em 2 dias)
+  const calcLiquidoComAnt = (valorBruto: number, n: number) => {
+    const liquidoTotal   = calcLiquidoSemAnt(valorBruto, n);
+    const parcelaLiquida = liquidoTotal / n;
+    let total = 0;
+    for (let i = 1; i <= n; i++) {
+      const dias     = CICLO_DIAS * i;
+      const desconto = parcelaLiquida * (TAXA_ANT_MES / 30) * dias;
+      total += parcelaLiquida - desconto;
+    }
+    return parseFloat(total.toFixed(2));
+  };
+
+  // Valor de cada parcela cobrada do cliente
+  const calcInstallment = (valorDesejado: number, n: number) => {
+    const bruto = calcCobranca(valorDesejado, n);
+    return parseFloat((bruto / n).toFixed(2));
   };
 
   const maxInstallments = settings.installmentLimit;
@@ -450,28 +476,25 @@ export function Builder() {
     doc.setFillColor(...O);
     doc.roundedRect(14, y, 87, 22, 2, 2, 'F');
     doc.setTextColor(...W); doc.setFontSize(8); doc.setFont('helvetica', 'normal');
-    doc.text('INVESTIMENTO INICIAL (SETUP)', 57, y + 7, { align: 'center' });
+    doc.text('INVESTIMENTO LÍQUIDO (SETUP)', 57, y + 7, { align: 'center' });
     doc.setFontSize(14); doc.setFont('helvetica', 'bold');
     doc.text(fmt(preview.setup), 57, y + 17, { align: 'center' });
 
     doc.setFillColor(...D);
     doc.roundedRect(109, y, 87, 22, 2, 2, 'F');
     doc.setTextColor(...W); doc.setFontSize(8); doc.setFont('helvetica', 'normal');
-    doc.text('PARCELAMENTO DO SETUP', 152, y + 7, { align: 'center' });
+    doc.text('COBRAR DO CLIENTE', 152, y + 7, { align: 'center' });
     doc.setFontSize(14); doc.setFont('helvetica', 'bold');
-    doc.text(`${installments} × ${fmt(calcInstallment(preview.setup, installments))}`, 152, y + 17, { align: 'center' });
+    doc.text(`${installments}x ${fmt(calcInstallment(preview.setup, installments))}`, 152, y + 17, { align: 'center' });
     y += 28;
 
-    // nota suporte
+    const brutoPDF   = calcCobranca(preview.setup, installments);
+    const semAntPDF  = calcLiquidoSemAnt(brutoPDF, installments);
+    const comAntPDF  = calcLiquidoComAnt(brutoPDF, installments);
+    const mdrPDF     = (mdrRate(installments) * 100).toFixed(2);
     doc.setTextColor(...G); doc.setFont('helvetica', 'italic'); doc.setFontSize(7.5);
-    const totalParc = calcInstallment(preview.setup, installments) * installments;
-    const jurosInfo = ` com ${(asaasRate(installments) * 100).toFixed(2)}% a.m. + R$ 0,49 Asaas/parcela (total ${fmt(totalParc)})`;
-    const hostingMonthlyPDF = Array.from(hostings).reduce((sum, h) => sum + (HOSTING_PRICES[h] ?? 0), 0);
-    const pandaMonthlyPDF   = pandaPlan  ? PANDA_PLANS[pandaPlan].monthly  : 0;
-    const bunneyMonthlyPDF  = bunneyPlan ? BUNNEY_PLANS[bunneyPlan].monthly : 0;
-    const totalMonthlyPDF   = preview.monthly;
-    doc.text(`* Setup de ${fmt(preview.setup)} parcelado em ${installments}x de ${fmt(calcInstallment(preview.setup, installments))}${jurosInfo}. Mensalidade total: ${fmt(totalMonthlyPDF)}${hostingMonthlyPDF > 0 ? ` (incl. hospedagem ${fmt(hostingMonthlyPDF)}/mês)` : ''}${pandaMonthlyPDF > 0 ? ` + Panda ${fmt(pandaMonthlyPDF)}/mês` : ''}${bunneyMonthlyPDF > 0 ? ` + Bunny ${fmt(bunneyMonthlyPDF)}/mês` : ''}.`, 14, y);
-    y += 6;
+    doc.text(`* Cobrança: ${installments}x ${fmt(calcInstallment(preview.setup, installments))} = ${fmt(brutoPDF)} (MDR ${mdrPDF}% + R$ 0,49/transação).`, 14, y); y += 5;
+    doc.text(`  Líquido mês a mês: ${fmt(semAntPDF)} • Líquido antecipado (2 dias): ${fmt(comAntPDF)} (ant. 1,7% a.m. / ciclo ${CICLO_DIAS} dias).`, 14, y); y += 5;
     if (hostings.size > 0) {
       doc.text('* O valor da hospedagem é uma estimativa. O cliente contrata diretamente na Hostinger e pode variar conforme promoções.', 14, y);
       y += 5;
@@ -501,19 +524,27 @@ export function Builder() {
         style={{ background: 'linear-gradient(to right, #FFF1E6, #FFF7F3)', border: '1px solid #FED7AA' }}>
         <div className="flex justify-between items-center">
           <div>
-            <p className="label">Setup estimado</p>
+            <p className="label">Setup estimado (líquido)</p>
             <p className="text-3xl font-black" style={{ color: 'var(--kea-heading)' }}>{fmt(preview.setup)}</p>
           </div>
           <div className="text-right">
-            <p className="label">Parcelamento do Setup</p>
+            <p className="label">Cobrar do cliente</p>
             <p className="text-3xl font-black text-orange-600">
-              {installments} × {fmt(calcInstallment(preview.setup, installments))}
+              {installments}x {fmt(calcInstallment(preview.setup, installments))}
             </p>
-            {installments > 0 && (
-              <p className="text-xs mt-0.5" style={{ color: 'var(--kea-body)' }}>
-                {(asaasRate(installments) * 100).toFixed(2)}% a.m. + R$ 0,49/parcela • total {fmt(calcInstallment(preview.setup, installments) * installments)}
-              </p>
-            )}
+            {installments > 0 && (() => {
+              const bruto      = calcCobranca(preview.setup, installments);
+              const semAnt     = calcLiquidoSemAnt(bruto, installments);
+              const comAnt     = calcLiquidoComAnt(bruto, installments);
+              const mdr        = (mdrRate(installments) * 100).toFixed(2);
+              return (
+                <div className="text-xs mt-1 flex flex-col gap-0.5" style={{ color: 'var(--kea-body)' }}>
+                  <span>MDR {mdr}% + R$ 0,49 • total cobrado {fmt(bruto)}</span>
+                  <span>Líquido mês a mês: <strong>{fmt(semAnt)}</strong></span>
+                  <span>Líquido antecipado: <strong>{fmt(comAnt)}</strong></span>
+                </div>
+              );
+            })()}
           </div>
         </div>
         <div>
@@ -878,73 +909,84 @@ export function Builder() {
           </div>
         </div>
 
-        {/* Panda Videos — planos mensais */}
-        {pandaVideos && (
-          <div>
-            <label className="label"><Sparkles size={13} className="inline mr-1.5 opacity-70" />Plano Panda Videos</label>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-              {(Object.entries(PANDA_PLANS) as [keyof typeof PANDA_PLANS, typeof PANDA_PLANS[keyof typeof PANDA_PLANS]][]).map(([key, plan]) => {
-                const active = pandaPlan === key;
-                return (
-                  <button key={key} onClick={() => setPandaPlan(active ? '' : key)}
-                    className="p-4 rounded-xl border-2 text-left transition-all duration-200 hover:border-orange-500 relative"
-                    style={cardStyle(active)}>
-                    {plan.badge && (
-                      <span className="absolute top-3 right-3 text-[10px] font-black px-2 py-0.5 rounded-full" style={{ background: '#EA580C', color: '#fff' }}>{plan.badge}</span>
-                    )}
-                    <div className="flex items-start justify-between mb-2">
-                      <Sparkles size={16} className={ic(active)} />
-                      <Checkbox checked={active} />
-                    </div>
-                    <p className="font-black text-sm">{plan.label}</p>
-                    <div className="flex flex-col gap-0.5 mt-1.5">
-                      {[{ l: 'Storage', v: plan.storage }, { l: 'Banda', v: plan.bandwidth }].map(({ l, v }) => (
-                        <div key={l} className="flex justify-between text-[11px]">
-                          <span style={{ color: 'var(--kea-subtle)' }}>{l}</span>
-                          <span className="font-bold" style={{ color: 'var(--kea-heading)' }}>{v}</span>
-                        </div>
-                      ))}
-                    </div>
-                    <p className="text-sm font-black text-orange-600 mt-2">{fmt(plan.monthly)}/mês</p>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Bunny.net — planos mensais */}
-        {bunneyNet && (
-          <div>
-            <label className="label"><Server size={13} className="inline mr-1.5 opacity-70" />Plano Bunny.net CDN</label>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-              {(Object.entries(BUNNEY_PLANS) as [keyof typeof BUNNEY_PLANS, typeof BUNNEY_PLANS[keyof typeof BUNNEY_PLANS]][]).map(([key, plan]) => {
-                const active = bunneyPlan === key;
-                return (
-                  <button key={key} onClick={() => setBunneyPlan(active ? '' : key)}
-                    className="p-4 rounded-xl border-2 text-left transition-all duration-200 hover:border-orange-500"
-                    style={cardStyle(active)}>
-                    <div className="flex items-start justify-between mb-2">
-                      <Server size={16} className={ic(active)} />
-                      <Checkbox checked={active} />
-                    </div>
-                    <p className="font-black text-sm">{plan.label}</p>
-                    <div className="flex flex-col gap-0.5 mt-1.5">
-                      {[{ l: 'Storage', v: plan.storage }, { l: 'Banda', v: plan.bandwidth }].map(({ l, v }) => (
-                        <div key={l} className="flex justify-between text-[11px]">
-                          <span style={{ color: 'var(--kea-subtle)' }}>{l}</span>
-                          <span className="font-bold" style={{ color: 'var(--kea-heading)' }}>{v}</span>
-                        </div>
-                      ))}
-                    </div>
-                    <p className="text-sm font-black text-orange-600 mt-2">{plan.monthly > 0 ? `${fmt(plan.monthly)}/mês` : 'Sob demanda'}</p>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
       </div>
+
+      {/* Panda Videos — planos mensais (card independente) */}
+      {pandaVideos && (
+        <div className="card flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <h2 className="font-black text-lg flex items-center gap-2" style={{ color: 'var(--kea-heading)' }}>
+              <Sparkles size={18} className="text-orange-600" /> Plano Panda Videos
+            </h2>
+            {!pandaPlan && <span className="text-xs text-orange-500 font-semibold">Selecione um plano</span>}
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {(Object.entries(PANDA_PLANS) as [keyof typeof PANDA_PLANS, typeof PANDA_PLANS[keyof typeof PANDA_PLANS]][]).map(([key, plan]) => {
+              const active = pandaPlan === key;
+              return (
+                <button key={key} onClick={() => setPandaPlan(active ? '' : key)}
+                  className="p-4 rounded-xl border-2 text-left transition-all duration-200 hover:border-orange-500 relative"
+                  style={cardStyle(active)}>
+                  {plan.badge && (
+                    <span className="absolute top-3 right-3 text-[10px] font-black px-2 py-0.5 rounded-full" style={{ background: '#EA580C', color: '#fff' }}>{plan.badge}</span>
+                  )}
+                  <div className="flex items-start justify-between mb-2">
+                    <Sparkles size={16} className={ic(active)} />
+                    <Checkbox checked={active} />
+                  </div>
+                  <p className="font-black text-sm">{plan.label}</p>
+                  <div className="flex flex-col gap-0.5 mt-1.5">
+                    {[{ l: 'Storage', v: plan.storage }, { l: 'Banda', v: plan.bandwidth }].map(({ l, v }) => (
+                      <div key={l} className="flex justify-between text-[11px]">
+                        <span style={{ color: 'var(--kea-subtle)' }}>{l}</span>
+                        <span className="font-bold" style={{ color: 'var(--kea-heading)' }}>{v}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-sm font-black text-orange-600 mt-2">{fmt(plan.monthly)}/mês</p>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Bunny.net — planos mensais (card independente) */}
+      {bunneyNet && (
+        <div className="card flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <h2 className="font-black text-lg flex items-center gap-2" style={{ color: 'var(--kea-heading)' }}>
+              <Server size={18} className="text-orange-600" /> Plano Bunny.net CDN
+            </h2>
+            {!bunneyPlan && <span className="text-xs text-orange-500 font-semibold">Selecione um plano</span>}
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {(Object.entries(BUNNEY_PLANS) as [keyof typeof BUNNEY_PLANS, typeof BUNNEY_PLANS[keyof typeof BUNNEY_PLANS]][]).map(([key, plan]) => {
+              const active = bunneyPlan === key;
+              return (
+                <button key={key} onClick={() => setBunneyPlan(active ? '' : key)}
+                  className="p-4 rounded-xl border-2 text-left transition-all duration-200 hover:border-orange-500"
+                  style={cardStyle(active)}>
+                  <div className="flex items-start justify-between mb-2">
+                    <Server size={16} className={ic(active)} />
+                    <Checkbox checked={active} />
+                  </div>
+                  <p className="font-black text-sm">{plan.label}</p>
+                  <div className="flex flex-col gap-0.5 mt-1.5">
+                    {[{ l: 'Storage', v: plan.storage }, { l: 'Banda', v: plan.bandwidth }].map(({ l, v }) => (
+                      <div key={l} className="flex justify-between text-[11px]">
+                        <span style={{ color: 'var(--kea-subtle)' }}>{l}</span>
+                        <span className="font-bold" style={{ color: 'var(--kea-heading)' }}>{v}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-sm font-black text-orange-600 mt-2">{plan.monthly > 0 ? `${fmt(plan.monthly)}/mês` : 'Sob demanda'}</p>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="flex gap-3">
         <button onClick={submit} disabled={loading} className="btn-primary flex-1 text-center text-lg">
@@ -963,17 +1005,24 @@ export function Builder() {
             <button onClick={() => navigate('/')} className="btn-ghost text-sm">Ver Dashboard →</button>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <div><p className="label">Setup</p><p className="text-2xl font-black" style={{ color: 'var(--kea-heading)' }}>{fmt(result.setup_value)}</p></div>
+            <div><p className="label">Setup (líquido)</p><p className="text-2xl font-black" style={{ color: 'var(--kea-heading)' }}>{fmt(result.setup_value)}</p></div>
             <div>
-              <p className="label">Parcelamento do Setup</p>
+              <p className="label">Cobrar do cliente</p>
               <p className="text-2xl font-black text-orange-600">
-                {installments} × {fmt(calcInstallment(result.setup_value, installments))}
+                {installments}x {fmt(calcInstallment(result.setup_value, installments))}
               </p>
-              {installments > 0 && (
-                <p className="text-xs mt-0.5" style={{ color: 'var(--kea-body)' }}>
-                  {(asaasRate(installments) * 100).toFixed(2)}% a.m. + R$ 0,49/parcela • total {fmt(calcInstallment(result.setup_value, installments) * installments)}
-                </p>
-              )}
+              {installments > 0 && (() => {
+                const bruto  = calcCobranca(result.setup_value, installments);
+                const semAnt = calcLiquidoSemAnt(bruto, installments);
+                const comAnt = calcLiquidoComAnt(bruto, installments);
+                return (
+                  <div className="text-xs mt-1 flex flex-col gap-0.5" style={{ color: 'var(--kea-body)' }}>
+                    <span>Total cobrado: {fmt(bruto)}</span>
+                    <span>Líquido mês a mês: <strong>{fmt(semAnt)}</strong></span>
+                    <span>Líquido antecipado: <strong>{fmt(comAnt)}</strong></span>
+                  </div>
+                );
+              })()}
             </div>
           </div>
         </div>
