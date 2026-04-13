@@ -167,7 +167,7 @@ export function Builder() {
     const installmentPayload = {
       installments,
       interest_rate: mdrRate(installments),
-      installment_value: calcInstallment(preview.setup, installments),
+      installment_value: calcInstallment(setupComCliente, installments),
     };
     try {
       const requests: Promise<unknown>[] = [];
@@ -263,6 +263,7 @@ export function Builder() {
   const maxInstallments = settings.installmentLimit;
 
   const commissionValue = parseFloat((preview.setup * (settings.commissionRate / 100)).toFixed(2));
+  const setupComCliente  = parseFloat((preview.setup + commissionValue).toFixed(2));
 
   // Card selecionável genérico
   const SelectCard = ({
@@ -492,15 +493,15 @@ export function Builder() {
     doc.setTextColor(...W); doc.setFontSize(8); doc.setFont('helvetica', 'normal');
     doc.text('COBRAR DO CLIENTE', 152, y + 7, { align: 'center' });
     doc.setFontSize(14); doc.setFont('helvetica', 'bold');
-    doc.text(`${installments}x ${fmt(calcInstallment(preview.setup, installments))}`, 152, y + 17, { align: 'center' });
+    doc.text(`${installments}x ${fmt(calcInstallment(setupComCliente, installments))}`, 152, y + 17, { align: 'center' });
     y += 28;
 
-    const brutoPDF   = calcCobranca(preview.setup, installments);
-    const semAntPDF  = calcLiquidoSemAnt(brutoPDF, installments);
-    const comAntPDF  = calcLiquidoComAnt(brutoPDF, installments);
-    const mdrPDF     = (mdrRate(installments) * 100).toFixed(2);
+    const brutoPDF  = calcCobranca(setupComCliente, installments);
+    const semAntPDF = calcLiquidoSemAnt(brutoPDF, installments);
+    const comAntPDF = calcLiquidoComAnt(brutoPDF, installments);
+    const mdrPDF    = (mdrRate(installments) * 100).toFixed(2);
     doc.setTextColor(...G); doc.setFont('helvetica', 'italic'); doc.setFontSize(7.5);
-    doc.text(`* Cobrança: ${installments}x ${fmt(calcInstallment(preview.setup, installments))} = ${fmt(brutoPDF)} (MDR ${mdrPDF}% + R$ 0,49/transação).`, 14, y); y += 5;
+    doc.text(`* Cobrança: ${installments}x ${fmt(calcInstallment(setupComCliente, installments))} = ${fmt(brutoPDF)} (MDR ${mdrPDF}% + R$ ${TAXA_FIXA.toFixed(2)}/transação).`, 14, y); y += 5;
     doc.text(`  Líquido mês a mês: ${fmt(semAntPDF)} • Líquido antecipado (2 dias): ${fmt(comAntPDF)} (ant. 1,7% a.m. / ciclo ${CICLO_DIAS} dias).`, 14, y); y += 5;
     if (hostings.size > 0) {
       doc.text('* O valor da hospedagem é uma estimativa. O cliente contrata diretamente na Hostinger e pode variar conforme promoções.', 14, y);
@@ -531,22 +532,22 @@ export function Builder() {
         style={{ background: 'linear-gradient(to right, #FFF1E6, #FFF7F3)', border: '1px solid #FED7AA' }}>
         <div className="flex justify-between items-center">
           <div>
-            <p className="label">Setup estimado (líquido)</p>
+            <p className="label">Setup líquido</p>
             <p className="text-3xl font-black" style={{ color: 'var(--kea-heading)' }}>{fmt(preview.setup)}</p>
           </div>
           <div className="text-right">
             <p className="label">Cobrar do cliente</p>
             <p className="text-3xl font-black text-orange-600">
-              {installments}x {fmt(calcInstallment(preview.setup, installments))}
+              {installments}x {fmt(calcInstallment(setupComCliente, installments))}
             </p>
             {installments > 0 && (() => {
-              const bruto      = calcCobranca(preview.setup, installments);
-              const semAnt     = calcLiquidoSemAnt(bruto, installments);
-              const comAnt     = calcLiquidoComAnt(bruto, installments);
-              const mdr        = (mdrRate(installments) * 100).toFixed(2);
+              const bruto  = calcCobranca(setupComCliente, installments);
+              const semAnt = calcLiquidoSemAnt(bruto, installments);
+              const comAnt = calcLiquidoComAnt(bruto, installments);
+              const mdr    = (mdrRate(installments) * 100).toFixed(2);
               return (
                 <div className="text-xs mt-1 flex flex-col gap-0.5" style={{ color: 'var(--kea-body)' }}>
-                  <span>MDR {mdr}% + R$ 0,49 • total cobrado {fmt(bruto)}</span>
+                  <span>MDR {mdr}% + R$ {TAXA_FIXA.toFixed(2)} • total cobrado {fmt(bruto)}</span>
                   <span>Líquido mês a mês: <strong>{fmt(semAnt)}</strong></span>
                   <span>Líquido antecipado: <strong>{fmt(comAnt)}</strong></span>
                 </div>
@@ -558,8 +559,8 @@ export function Builder() {
           <div className="flex items-center justify-between rounded-xl px-4 py-3"
             style={{ background: '#FEF9C3', border: '1px solid #FDE047' }}>
             <div>
-              <p className="text-xs font-black uppercase tracking-wider" style={{ color: '#854D0E' }}>Comissão ({settings.commissionRate}%)</p>
-              <p className="text-xs mt-0.5" style={{ color: '#92400E' }}>Não incluso no PDF da proposta</p>
+              <p className="text-xs font-black uppercase tracking-wider" style={{ color: '#854D0E' }}>Comissão ({settings.commissionRate}%) — repassada ao cliente</p>
+              <p className="text-xs mt-0.5" style={{ color: '#92400E' }}>Inclusa no valor cobrado • Não discriminada no PDF</p>
             </div>
             <p className="text-xl font-black" style={{ color: '#854D0E' }}>{fmt(commissionValue)}</p>
           </div>
@@ -1026,10 +1027,10 @@ export function Builder() {
             <div>
               <p className="label">Cobrar do cliente</p>
               <p className="text-2xl font-black text-orange-600">
-                {installments}x {fmt(calcInstallment(result.setup_value, installments))}
+                {installments}x {fmt(calcInstallment(setupComCliente, installments))}
               </p>
               {installments > 0 && (() => {
-                const bruto  = calcCobranca(result.setup_value, installments);
+                const bruto  = calcCobranca(setupComCliente, installments);
                 const semAnt = calcLiquidoSemAnt(bruto, installments);
                 const comAnt = calcLiquidoComAnt(bruto, installments);
                 return (
