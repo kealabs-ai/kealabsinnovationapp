@@ -216,13 +216,18 @@ export function Builder() {
 
   const ic = (on: boolean) => on ? 'text-orange-600' : 'text-orange-300 dark:text-brand-muted';
 
-  // ── Calculadora de Parcelamento (Markup sobre MDR + antecipação) ────────────
-  const TAXA_FIXA    = 0.49;
-  const TAXA_ANT_MES = 0.017;  // 1.7% a.m.
-  const CICLO_DIAS   = 32;
+  // ── Calculadora de Parcelamento (parâmetros vindos das Settings) ────────────
+  const TAXA_FIXA    = settings.installmentTaxaFixa;
+  const TAXA_ANT_MES = settings.installmentAntecipacaoMensal / 100;
+  const CICLO_DIAS   = settings.installmentCicloDias;
 
-  const mdrRate = (n: number) =>
-    n === 1 ? 0.0299 : n <= 6 ? 0.0349 : n <= 12 ? 0.0399 : 0.0429;
+  const mdrRate = (n: number) => {
+    const r = n === 1 ? settings.installmentMdr1x
+            : n <= 6  ? settings.installmentMdr2_6x
+            : n <= 12 ? settings.installmentMdr7_12x
+            :           settings.installmentMdr13x;
+    return r / 100;
+  };
 
   // Valor a cobrar do cliente para receber `valorDesejado` líquido
   const calcCobranca = (valorDesejado: number, n: number) => {

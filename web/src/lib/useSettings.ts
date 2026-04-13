@@ -39,6 +39,13 @@ export interface ServiceSettings {
   monthlySupportRate: number;
   installmentLimit: number;
   installmentInterestRate: number;
+  installmentMdr1x: number;
+  installmentMdr2_6x: number;
+  installmentMdr7_12x: number;
+  installmentMdr13x: number;
+  installmentTaxaFixa: number;
+  installmentAntecipacaoMensal: number;
+  installmentCicloDias: number;
 }
 
 // Mapa: chave do frontend → setting_key no banco
@@ -64,6 +71,13 @@ const KEY_MAP: Record<keyof ServiceSettings, string> = {
   monthlySupportRate: 'monthly_support_rate',
   installmentLimit: 'installment_limit',
   installmentInterestRate: 'installment_interest_rate',
+  installmentMdr1x: 'installment_mdr_1x',
+  installmentMdr2_6x: 'installment_mdr_2_6x',
+  installmentMdr7_12x: 'installment_mdr_7_12x',
+  installmentMdr13x: 'installment_mdr_13x',
+  installmentTaxaFixa: 'installment_taxa_fixa',
+  installmentAntecipacaoMensal: 'installment_antecipacao_mensal',
+  installmentCicloDias: 'installment_ciclo_dias',
 };
 
 export const DEFAULTS: ServiceSettings = {
@@ -82,6 +96,13 @@ export const DEFAULTS: ServiceSettings = {
   monthlySupportRate: 0.1,
   installmentLimit: 12,
   installmentInterestRate: 0,
+  installmentMdr1x: 2.99,
+  installmentMdr2_6x: 3.49,
+  installmentMdr7_12x: 3.99,
+  installmentMdr13x: 4.29,
+  installmentTaxaFixa: 0.49,
+  installmentAntecipacaoMensal: 1.7,
+  installmentCicloDias: 32,
 };
 
 const CACHE_KEY = 'keaflow-settings';

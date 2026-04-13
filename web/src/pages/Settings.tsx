@@ -138,10 +138,18 @@ export function Settings() {
 
           {section('💳 Parcelamento', <>
             {field('Limite de parcelas', 'installmentLimit', { suffix: 'x', min: 1 })}
-            {field('Juros por parcela', 'installmentInterestRate', { step: 0.01, min: 0, suffix: '% a.m.',
-              toDisplay: (v: number) => parseFloat((v * 100).toFixed(4)),
-              fromInput: (v: number) => parseFloat((v / 100).toFixed(6)),
-            })}
+            {field('MDR 1x', 'installmentMdr1x', { step: 0.01, min: 0, suffix: '%',
+              toDisplay: (v) => v, fromInput: (v) => v })}
+            {field('MDR 2–6x', 'installmentMdr2_6x', { step: 0.01, min: 0, suffix: '%',
+              toDisplay: (v) => v, fromInput: (v) => v })}
+            {field('MDR 7–12x', 'installmentMdr7_12x', { step: 0.01, min: 0, suffix: '%',
+              toDisplay: (v) => v, fromInput: (v) => v })}
+            {field('MDR 13x+', 'installmentMdr13x', { step: 0.01, min: 0, suffix: '%',
+              toDisplay: (v) => v, fromInput: (v) => v })}
+            {field('Taxa fixa por transação', 'installmentTaxaFixa', { prefix: 'R$', step: 0.01, min: 0 })}
+            {field('Taxa antecipação mensal', 'installmentAntecipacaoMensal', { step: 0.01, min: 0, suffix: '% a.m.',
+              toDisplay: (v) => v, fromInput: (v) => v })}
+            {field('Ciclo de dias', 'installmentCicloDias', { suffix: 'dias', min: 1 })}
           </>)}
 
           {section('🖥️ Hospedagem — Mensalidade', <>
