@@ -3,7 +3,7 @@ import type React from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Globe, BarChart2, FileSpreadsheet, Plug, Database, Gauge, Zap,
-  Workflow, MessageCircle, Rocket, Clock, Server, HardDrive, Cpu, Ban,
+  Workflow, MessageCircle, Rocket, Clock, Server, HardDrive, Cpu,
   Instagram, Link, Bot, Sparkles, BrainCircuit, Building2, BookOpen, Mic,
 } from 'lucide-react';
 import { quotesApi, prospectsApi } from '../lib/api';
