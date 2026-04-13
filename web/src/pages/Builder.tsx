@@ -112,6 +112,14 @@ export function Builder() {
     pro:             { label: 'Pro',             storage: '500GB',     bandwidth: '2TB/mês',     monthly: 179 },
   };
 
+  const toggleHosting = (key: HostingPlan) => {
+    setHostings(prev => {
+      const next = new Set<HostingPlan>(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  };
+
   const toggleSource = (s: BISource) => {
     setSources((prev) => {
       const next = new Set(prev);
@@ -834,7 +842,7 @@ export function Builder() {
             ] as { key: HostingPlan; icon: React.ElementType; label: string; price: string; desc: string }[]).map(({ key, icon: Icon, label, price, desc }) => {
               const active = hostings.has(key);
               return (
-                <SelectCard key={key} active={active} onClick={() => setHostings(prev => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; })}>
+                <SelectCard key={key} active={active} onClick={() => toggleHosting(key)}>
                   <div className="flex items-start justify-between mb-1.5">
                     <Icon size={16} className={ic(active)} />
                     <Checkbox checked={active} />
@@ -856,7 +864,7 @@ export function Builder() {
             ] as { key: HostingPlan; icon: React.ElementType; label: string; price: string; desc: string }[]).map(({ key, icon: Icon, label, price, desc }) => {
               const active = hostings.has(key);
               return (
-                <SelectCard key={key} active={active} onClick={() => setHostings(prev => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; })}>
+                <SelectCard key={key} active={active} onClick={() => toggleHosting(key)}>
                   <div className="flex items-start justify-between mb-2">
                     <Icon size={18} className={ic(active)} />
                     <Checkbox checked={active} />
