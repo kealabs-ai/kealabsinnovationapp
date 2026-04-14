@@ -130,7 +130,8 @@ export function useSettings() {
   const [settings, setSettings] = useState<ServiceSettings>(() => {
     try {
       const stored = localStorage.getItem(CACHE_KEY);
-      return stored ? JSON.parse(stored) : null;
+      // Merge com DEFAULTS garante que campos novos ausentes no cache não fiquem undefined
+      return stored ? { ...DEFAULTS, ...JSON.parse(stored) } : null;
     } catch { return null; }
   });
 
