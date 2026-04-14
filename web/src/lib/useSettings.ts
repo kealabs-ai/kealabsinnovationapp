@@ -110,7 +110,7 @@ export const DEFAULTS: ServiceSettings = {
 
 const CACHE_KEY = 'keaflow-settings';
 
-function fromApi(rows: { setting_key: string; setting_value: string }[]): Partial<ServiceSettings> {
+function fromApi(rows: { setting_key: string; setting_value: string }[]): ServiceSettings {
   const reverseMap = Object.fromEntries(
     Object.entries(KEY_MAP).map(([k, v]) => [v, k as keyof ServiceSettings])
   );
@@ -119,11 +119,11 @@ function fromApi(rows: { setting_key: string; setting_value: string }[]): Partia
     const key = reverseMap[row.setting_key];
     if (key) {
       const val = parseFloat(row.setting_value);
-      // interest_rate vem como percentual (ex: 3.5) → converte para decimal (0.035)
       result[key] = key === 'installmentInterestRate' ? val / 100 : val;
     }
   }
-  return result;
+  // Garante que campos ausentes no banco usam os valores padrão
+  return { ...DEFAULTS, ...result };
 }
 
 export function useSettings() {
@@ -141,7 +141,7 @@ export function useSettings() {
       const rows = Array.isArray(r.data) ? r.data : [];
       if (rows.length > 0) {
         const fromServer = fromApi(rows);
-        setSettings(fromServer as ServiceSettings);
+        setSettings(fromServer);
         localStorage.setItem(CACHE_KEY, JSON.stringify(fromServer));
       }
       setLoaded(true);
