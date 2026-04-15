@@ -105,24 +105,24 @@ function buildDocument(p: PdfPayload) {
   let y = 0;
 
   // ── HEADER ──────────────────────────────────────────────────────────────────
-  addRect(0, 0, PW, 32, O);
-  addRect(0, 26, PW, 6, O2);
-  // decorative circles (simulated with rects — pdfme has no ellipse in free tier)
-  addRect(178, -6, 26, 26, '#FF7A30');
-  addRect(186, 8,  18, 18, '#FF9A50');
+  const HDR = 32; // header height mm
+  addRect(0, 0, PW, HDR, WHITE);
+  // bottom accent line
+  addLine(0, HDR, PW, O, 1);
 
-  addImg(ML, 7, 46, 15, logoBase64);
+  // logo centralizado verticalmente: (HDR - logoH) / 2
+  const logoH = 15;
+  const logoW = 46;
+  const logoY = (HDR - logoH) / 2;
+  addImg(ML, logoY, logoW, logoH, logoBase64);
 
-  addText('Proposta Comercial', 118, 9, 78, 7,
-    { size: 12, bold: true, color: WHITE, align: 'right' });
-  addText(p.date, 118, 18, 78, 5,
-    { size: 8, color: '#FFD9C0', align: 'right' });
-  addText('Gerada automaticamente pelo sistema KeaFlow', ML, 28, 120, 4,
-    { size: 7.5, italic: true, color: '#FFD9C0' });
-  addText('VALIDA POR 15 DIAS', 148, 28, 48, 4,
-    { size: 7, bold: true, color: WHITE, align: 'right' });
+  // título e data alinhados à direita, centralizados verticalmente
+  addText('Proposta Comercial', 118, logoY + 1, 78, 7,
+    { size: 12, bold: true, color: DARK, align: 'right' });
+  addText(p.date, 118, logoY + 9, 78, 5,
+    { size: 8, color: GRAY, align: 'right' });
 
-  y = 38;
+  y = HDR + 6;
 
   // ── CLIENTE ─────────────────────────────────────────────────────────────────
   addRect(ML, y, CW, 22, OBGL);
