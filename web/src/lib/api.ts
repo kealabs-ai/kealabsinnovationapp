@@ -247,6 +247,7 @@ export const quotesApi = {
   updateAsaas:      (id: string, asaas_customer_id: string, asaas_charge_id: string) =>
                       api.post('/quotes/update-asaas', { id, asaas_customer_id, asaas_charge_id }),
   delete:           (id: string)                                                => api.post('/quotes/delete', { id }),
+  pdf:              (body: PdfPayload)                                          => api.post<Blob>('/quotes/pdf', body, { responseType: 'blob' }),
 };
 
 // ─── CHAT ─────────────────────────────────────────────────────────────────────

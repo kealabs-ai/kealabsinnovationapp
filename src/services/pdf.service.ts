@@ -1,6 +1,7 @@
 import { chromium } from 'playwright';
 import fs from 'fs';
 import path from 'path';
+import { execSync } from 'child_process';
 
 const logoBase64 = fs.readFileSync(
   path.join(__dirname, '..', '..', 'web', 'src', 'assets', 'kealabs_logo_strategic.png')
@@ -461,7 +462,26 @@ function buildHtml(p: PdfPayload): string {
 }
 
 export async function generateProposalPdf(payload: PdfPayload): Promise<Buffer> {
-  const browser = await chromium.launch({ headless: true });
+  // Detect system Chrome/Chromium on Linux servers
+  let executablePath: string | undefined;
+  if (process.platform === 'linux') {
+    const candidates = [
+      '/usr/bin/google-chrome',
+      '/usr/bin/google-chrome-stable',
+      '/usr/bin/chromium-browser',
+      '/usr/bin/chromium',
+      '/snap/bin/chromium',
+    ];
+    for (const c of candidates) {
+      try { execSync(`test -f ${c}`); executablePath = c; break; } catch { /* not found */ }
+    }
+  }
+
+  const browser = await chromium.launch({
+    headless: true,
+    ...(executablePath ? { executablePath } : {}),
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+  });
   try {
     const page = await browser.newPage();
     await page.setContent(buildHtml(payload), { waitUntil: 'networkidle' });
