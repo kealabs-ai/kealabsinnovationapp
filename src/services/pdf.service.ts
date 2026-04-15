@@ -236,18 +236,41 @@ function buildDocument(p: PdfPayload) {
     { size: 7.5, color: '#9CA3AF' });
   y += 33;
 
-  // notes
-  addRect(ML, y, CW, 20, '#FAFAF9');
+  // notes — informacoes KeaLabs
+  const notesH = 42;
+  addRect(ML, y, CW, notesH, '#FAFAF9');
   addLine(ML, y, CW, '#E5E0D8', 0.4);
-  addLine(ML, y + 20, CW, '#E5E0D8', 0.4);
-  addText('Detalhes financeiros:', ML + 4, y + 3, CW - 8, 4,
-    { size: 8, bold: true, color: DARK });
-  addText(p.mdrInfo, ML + 4, y + 8.5, CW - 8, 4, { size: 7.5, color: GRAY });
-  addText(
-    `Liquido mes a mes: ${p.liquidMensal}   •   Liquido antecipado (2 dias): ${p.liquidAntecipado}`,
-    ML + 4, y + 14, CW - 8, 4, { size: 7.5, color: GRAY }
-  );
-  y += 24;
+  addLine(ML, y + notesH, CW, '#E5E0D8', 0.4);
+
+  // coluna esquerda — parcelamento
+  addText('Condicoes de parcelamento', ML + 4, y + 3, 86, 4,
+    { size: 8, bold: true, color: O });
+  addText(p.mdrInfo, ML + 4, y + 8.5, 86, 4, { size: 7.5, color: GRAY });
+  addText(`Liquido mes a mes: ${p.liquidMensal}`, ML + 4, y + 14, 86, 4,
+    { size: 7.5, color: GRAY });
+  addText(`Liquido antecipado (2 dias): ${p.liquidAntecipado}`, ML + 4, y + 19.5, 86, 4,
+    { size: 7.5, color: GRAY });
+
+  // divisor vertical
+  addLine(ML + 94, y + 2, 0.3, '#E5E0D8', notesH - 4);
+
+  // coluna direita — como a KeaLabs trabalha
+  addText('Como a KeaLabs trabalha', ML + 98, y + 3, 84, 4,
+    { size: 8, bold: true, color: O });
+  addText('Desenvolvimento agil com entregas por sprint e alinhamento continuo.', ML + 98, y + 8.5, 84, 4,
+    { size: 7.5, color: GRAY });
+  addText('Suporte pos-entrega incluso no plano mensal contratado.', ML + 98, y + 14, 84, 4,
+    { size: 7.5, color: GRAY });
+  addText('Infraestrutura, hospedagem e seguranca gerenciados pela KeaLabs.', ML + 98, y + 19.5, 84, 4,
+    { size: 7.5, color: GRAY });
+  addText('Proposta valida por 15 dias a partir da data de emissao.', ML + 98, y + 25, 84, 4,
+    { size: 7.5, color: GRAY });
+  addText('Pagamento via cartao de credito parcelado ou PIX a vista.', ML + 98, y + 30.5, 84, 4,
+    { size: 7.5, color: GRAY });
+  addText('Contato: contato@kealabs.cloud  |  kealabs.cloud', ML + 98, y + 36, 84, 4,
+    { size: 7.5, bold: true, color: DARK });
+
+  y += notesH + 4;
 
   // ── FOOTER ───────────────────────────────────────────────────────────────────
   addRect(0, 284, PW, 1.5, O);
