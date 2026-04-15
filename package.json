@@ -18,9 +18,10 @@
     "@fastify/cors": "^10.0.2",
     "@fastify/static": "^9.0.0",
     "@google/generative-ai": "^0.24.1",
+    "@pdfme/common": "^6.0.6",
+    "@pdfme/generator": "^6.0.6",
     "dotenv": "^16.4.7",
     "fastify": "^5.8.2",
-    "playwright": "^1.59.1",
     "socket.io": "^4.8.1"
   },
   "devDependencies": {
