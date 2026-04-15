@@ -4,6 +4,8 @@ import { PricingEngine } from '../services/pricing.engine';
 import { quoteStore } from '../store/quote.store';
 import { quoteObserver } from '../patterns/quote.observer';
 import type { CreateQuoteDTO, QuoteStatus } from '../types';
+import { generateProposalPdf } from '../services/pdf.service';
+import type { PdfPayload } from '../services/pdf.service';
 
 // Adapta Quote interno para o formato esperado pelo frontend
 function toApiQuote(q: ReturnType<typeof quoteStore.findById>) {
@@ -109,6 +111,14 @@ export async function quoteRoutes(app: FastifyInstance) {
   app.post<{ Body: { id: string } }>('/quotes/delete', async (req, reply) => {
     quoteStore.patch(req.body.id, {});
     return reply.send({ success: true });
+  });
+
+  app.post<{ Body: PdfPayload }>('/quotes/pdf', async (req, reply) => {
+    const pdfBuffer = await generateProposalPdf(req.body);
+    reply
+      .header('Content-Type', 'application/pdf')
+      .header('Content-Disposition', `attachment; filename="proposta-${req.body.clientName.replace(/\s+/g, '-').toLowerCase() || 'kealabs'}.pdf"`)
+      .send(pdfBuffer);
   });
 
   // ─── SETTINGS ─────────────────────────────────────────────────────────────

@@ -278,247 +278,158 @@ export function Builder() {
     </button>
   );
 
-  const generatePDF = async () => {
-    const { jsPDF } = await import('jspdf');
-    const doc = new jsPDF();
-    const O  = [234, 88, 12]  as const; // orange
-    const D  = [20,  20,  20] as const; // dark
-    const G  = [100, 100, 100] as const; // gray
-    const L  = [248, 248, 248] as const; // light row
-    const W  = [255, 255, 255] as const; // white
-    const GR = [34, 197, 94]  as const; // green
+  const buildPdfPayload = () => {
+    const sections: import('../lib/api').PdfSection[] = [];
 
-    let y = 0;
-
-    // ── helpers ──────────────────────────────────────────────────────────────
-    const sectionTitle = (title: string) => {
-      y += 8;
-      doc.setFillColor(...O);
-      doc.rect(14, y, 182, 7, 'F');
-      doc.setTextColor(...W);
-      doc.setFontSize(9); doc.setFont('helvetica', 'bold');
-      doc.text(title.toUpperCase(), 17, y + 5);
-      y += 11;
-    };
-
-    const row = (label: string, value: string, shade: boolean, bold = false) => {
-      if (shade) { doc.setFillColor(...L); doc.rect(14, y - 4, 182, 8, 'F'); }
-      doc.setTextColor(...G); doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
-      doc.text(label, 17, y);
-      doc.setTextColor(...D); doc.setFont('helvetica', bold ? 'bold' : 'normal');
-      doc.text(value, 196, y, { align: 'right' });
-      y += 8;
-    };
-
-    const badge = (text: string, x: number, by: number, bg: readonly [number,number,number]) => {
-      doc.setFillColor(...bg);
-      doc.roundedRect(x, by - 4, doc.getTextWidth(text) + 6, 6, 1, 1, 'F');
-      doc.setTextColor(...W); doc.setFontSize(7); doc.setFont('helvetica', 'bold');
-      doc.text(text, x + 3, by);
-    };
-
-    // ── HEADER ───────────────────────────────────────────────────────────────
-    doc.setFillColor(...O);
-    doc.rect(0, 0, 210, 36, 'F');
-    doc.setFillColor(200, 70, 5);
-    doc.rect(0, 28, 210, 8, 'F');
-    doc.setTextColor(...W);
-    doc.setFontSize(24); doc.setFont('helvetica', 'bold');
-    doc.text('KeaLabs', 14, 18);
-    doc.setFontSize(10); doc.setFont('helvetica', 'normal');
-    doc.text('Proposta Comercial — KeaFlow', 14, 27);
-    doc.setFontSize(8);
-    doc.text(new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' }), 196, 27, { align: 'right' });
-    doc.setFontSize(8); doc.setFont('helvetica', 'italic');
-    doc.text('Este documento é uma proposta comercial gerada automaticamente pelo sistema KeaFlow.', 14, 33);
-    y = 46;
-
-    // ── CLIENTE ──────────────────────────────────────────────────────────────
-    sectionTitle('Dados do Cliente');
-    [
-      ['Cliente',   clientName    || '—'],
-      ['E-mail',    clientEmail   || '—'],
-      ['CPF/CNPJ',  clientCpfCnpj || '—'],
-      ['Telefone',  clientPhone   || '—'],
-    ].forEach(([l, v], i) => row(l, v, i % 2 === 0));
-
-    // ── SERVIÇOS ─────────────────────────────────────────────────────────────
     if (includeWeb) {
-      sectionTitle('Site Web');
-      row('Base do projeto', fmt(settings.webBase), false);
-      row('Menus / Seções', `${menuCount} menus`, true);
-      if (menuCount > settings.webFreeMenus)
-        row('  Menus extras', `${menuCount - settings.webFreeMenus} × ${fmt(settings.webExtraMenuPrice)} = ${fmt((menuCount - settings.webFreeMenus) * settings.webExtraMenuPrice)}`, false);
-      row('Integração Asaas (gateway)', includeAsaas ? fmt(settings.webAsaasIntegration) : 'Não incluído', true);
+      const rows = [
+        { label: 'Base do projeto', value: fmt(settings.webBase) },
+        { label: 'Menus / Seções', value: `${menuCount} menus` },
+        ...(menuCount > settings.webFreeMenus ? [{ label: 'Menus extras', value: `${menuCount - settings.webFreeMenus} × ${fmt(settings.webExtraMenuPrice)} = ${fmt((menuCount - settings.webFreeMenus) * settings.webExtraMenuPrice)}` }] : []),
+        { label: 'Integração Asaas (gateway)', value: includeAsaas ? fmt(settings.webAsaasIntegration) : 'Não incluído' },
+      ];
       const webTotal = settings.webBase
         + (menuCount > settings.webFreeMenus ? (menuCount - settings.webFreeMenus) * settings.webExtraMenuPrice : 0)
         + (includeAsaas ? settings.webAsaasIntegration : 0);
-      doc.setFillColor(255, 241, 230);
-      doc.rect(14, y - 2, 182, 8, 'F');
-      doc.setTextColor(...O); doc.setFont('helvetica', 'bold'); doc.setFontSize(9);
-      doc.text('Subtotal Site Web', 17, y + 4);
-      doc.text(fmt(webTotal), 196, y + 4, { align: 'right' });
-      y += 12;
+      sections.push({ title: 'Site Web', rows, subtotal: { label: 'Subtotal Site Web', value: fmt(webTotal) } });
     }
 
     if (includeMiniSite) {
-      sectionTitle('Mini Site');
-      row('Base do projeto', fmt(settings.miniSiteBase), false);
-      row('Páginas', `${pageCount} páginas`, true);
-      if (pageCount > settings.miniSiteFreePages)
-        row('  Páginas extras', `${pageCount - settings.miniSiteFreePages} × ${fmt(settings.miniSiteExtraPagePrice)} = ${fmt((pageCount - settings.miniSiteFreePages) * settings.miniSiteExtraPagePrice)}`, false);
-      row('Integração Instagram', includeInstagram ? fmt(settings.miniSiteInstagram) : 'Não incluído', true);
-      row('Botão WhatsApp', includeWppButton ? fmt(settings.miniSiteWhatsapp) : 'Não incluído', false);
+      const rows = [
+        { label: 'Base do projeto', value: fmt(settings.miniSiteBase) },
+        { label: 'Páginas', value: `${pageCount} páginas` },
+        ...(pageCount > settings.miniSiteFreePages ? [{ label: 'Páginas extras', value: `${pageCount - settings.miniSiteFreePages} × ${fmt(settings.miniSiteExtraPagePrice)} = ${fmt((pageCount - settings.miniSiteFreePages) * settings.miniSiteExtraPagePrice)}` }] : []),
+        { label: 'Integração Instagram', value: includeInstagram ? fmt(settings.miniSiteInstagram) : 'Não incluído' },
+        { label: 'Botão WhatsApp', value: includeWppButton ? fmt(settings.miniSiteWhatsapp) : 'Não incluído' },
+      ];
       const miniTotal = settings.miniSiteBase
         + (pageCount > settings.miniSiteFreePages ? (pageCount - settings.miniSiteFreePages) * settings.miniSiteExtraPagePrice : 0)
         + (includeInstagram ? settings.miniSiteInstagram : 0)
         + (includeWppButton ? settings.miniSiteWhatsapp : 0);
-      doc.setFillColor(255, 241, 230);
-      doc.rect(14, y - 2, 182, 8, 'F');
-      doc.setTextColor(...O); doc.setFont('helvetica', 'bold'); doc.setFontSize(9);
-      doc.text('Subtotal Mini Site', 17, y + 4);
-      doc.text(fmt(miniTotal), 196, y + 4, { align: 'right' });
-      y += 12;
+      sections.push({ title: 'Mini Site', rows, subtotal: { label: 'Subtotal Mini Site', value: fmt(miniTotal) } });
     }
 
     if (serviceType === 'BI') {
-      sectionTitle('Business Intelligence');
-      Array.from(sources).forEach((s, i) => row(`Fonte: ${s.toUpperCase()}`, fmt(BI_PRICES[s]), i % 2 === 0));
-      row('Complexidade', complexity === 'advanced' ? 'Advanced ×1.3' : 'Standard', true);
+      const rows = [
+        ...Array.from(sources).map(s => ({ label: `Fonte: ${s.toUpperCase()}`, value: fmt(BI_PRICES[s]) })),
+        { label: 'Complexidade', value: complexity === 'advanced' ? 'Advanced ×1.3' : 'Standard' },
+      ];
       const biTotal = Array.from(sources).reduce((sum, s) => sum + BI_PRICES[s], 0) * (complexity === 'advanced' ? settings.biAdvancedMultiplier : 1);
-      doc.setFillColor(255, 241, 230);
-      doc.rect(14, y - 2, 182, 8, 'F');
-      doc.setTextColor(...O); doc.setFont('helvetica', 'bold'); doc.setFontSize(9);
-      doc.text('Subtotal BI', 17, y + 4);
-      doc.text(fmt(biTotal), 196, y + 4, { align: 'right' });
-      y += 12;
+      sections.push({ title: 'Business Intelligence', rows, subtotal: { label: 'Subtotal BI', value: fmt(biTotal) } });
     }
 
     if (serviceType === 'AI_AGENT') {
-      sectionTitle('AI Agent');
       const plan = AGENT_PLANS[agentPlan];
-      row('Plano', agentPlan.charAt(0).toUpperCase() + agentPlan.slice(1), false);
-      row('Modelo de IA', plan.model, true);
-      row('Agentes', `${agentCount} agente(s)`, false);
-      row('Volume de mensagens', plan.msgs, true);
-      row('Memória', plan.memory, false);
-      if (agentCount > 1) row('Agentes extras', `${agentCount - 1} × ${fmt(settings.agentExtraAgentPrice)} = ${fmt((agentCount - 1) * settings.agentExtraAgentPrice)}`, true);
-      row('Base de Conhecimento (RAG)', includeRAG ? fmt(settings.agentRAG) : 'Não incluído', false);
-      row('Canal de Voz', includeVoice ? fmt(settings.agentVoice) : 'Não incluído', true);
-      row('Mensalidade do plano', fmt(plan.monthly), false);
+      const rows = [
+        { label: 'Plano', value: agentPlan.charAt(0).toUpperCase() + agentPlan.slice(1) },
+        { label: 'Modelo de IA', value: plan.model },
+        { label: 'Agentes', value: `${agentCount} agente(s)` },
+        { label: 'Volume de mensagens', value: plan.msgs },
+        { label: 'Memória', value: plan.memory },
+        ...(agentCount > 1 ? [{ label: 'Agentes extras', value: `${agentCount - 1} × ${fmt(settings.agentExtraAgentPrice)} = ${fmt((agentCount - 1) * settings.agentExtraAgentPrice)}` }] : []),
+        { label: 'Base de Conhecimento (RAG)', value: includeRAG ? fmt(settings.agentRAG) : 'Não incluído' },
+        { label: 'Canal de Voz', value: includeVoice ? fmt(settings.agentVoice) : 'Não incluído' },
+        { label: 'Mensalidade do plano', value: fmt(plan.monthly), bold: true },
+      ];
       const agentTotal = plan.setup + Math.max(0, agentCount - 1) * settings.agentExtraAgentPrice + (includeRAG ? settings.agentRAG : 0) + (includeVoice ? settings.agentVoice : 0);
-      doc.setFillColor(255, 241, 230);
-      doc.rect(14, y - 2, 182, 8, 'F');
-      doc.setTextColor(...O); doc.setFont('helvetica', 'bold'); doc.setFontSize(9);
-      doc.text('Subtotal AI Agent', 17, y + 4);
-      doc.text(fmt(agentTotal), 196, y + 4, { align: 'right' });
-      y += 12;
+      sections.push({ title: 'AI Agent', rows, subtotal: { label: 'Subtotal AI Agent', value: fmt(agentTotal) } });
     }
 
-    // ── MÓDULOS ───────────────────────────────────────────────────────────────
     const hasMods = n8n || wpp || agileSetup || consultorArea || pandaVideos || bunneyNet || mentoringHours > 0;
     if (hasMods) {
-      sectionTitle('Módulos Adicionais');
-      if (n8n)              row('n8n Automation',              fmt(MODULE_PRICES.n8n),                                    false);
-      if (wpp)              row('WhatsApp Gateway',             fmt(MODULE_PRICES.wpp),                                    true);
-      if (agileSetup)       row('Agile Setup',                  fmt(MODULE_PRICES.agile),                                  false);
-      if (consultorArea)    row('Consultor / Área do Aluno',    fmt(MODULE_PRICES.consultorArea),                          true);
-      if (pandaVideos)      row('Panda Videos',                 fmt(MODULE_PRICES.pandaVideos),                            false);
-      if (bunneyNet)        row('Bunny.net (CDN de Vídeo)',     fmt(MODULE_PRICES.bunneyNet),                              true);
-      if (mentoringHours>0) row(`Mentoria Ágil (${mentoringHours}h)`, fmt(mentoringHours * MODULE_PRICES.mentoring),   false);
+      const rows = [
+        ...(n8n           ? [{ label: 'n8n Automation',           value: fmt(MODULE_PRICES.n8n) }]                                    : []),
+        ...(wpp           ? [{ label: 'WhatsApp Gateway',          value: fmt(MODULE_PRICES.wpp) }]                                    : []),
+        ...(agileSetup    ? [{ label: 'Agile Setup',               value: fmt(MODULE_PRICES.agile) }]                                  : []),
+        ...(consultorArea ? [{ label: 'Consultor / Área do Aluno', value: fmt(MODULE_PRICES.consultorArea) }]                          : []),
+        ...(pandaVideos   ? [{ label: 'Panda Videos',              value: fmt(MODULE_PRICES.pandaVideos) }]                            : []),
+        ...(bunneyNet     ? [{ label: 'Bunny.net (CDN de Vídeo)',  value: fmt(MODULE_PRICES.bunneyNet) }]                              : []),
+        ...(mentoringHours > 0 ? [{ label: `Mentoria Ágil (${mentoringHours}h)`, value: fmt(mentoringHours * MODULE_PRICES.mentoring) }] : []),
+      ];
+      sections.push({ title: 'Módulos Adicionais', rows });
     }
 
-    // ── HOSPEDAGEM ────────────────────────────────────────────────────────────
-    if (hostings.size > 0) {
-      const hostingLabels: Record<string, { label: string; spec: string; type: string }> = {
-        'single':      { label: 'Single',      spec: '1 site · 10GB SSD · 100GB banda',  type: 'Compartilhada' },
-        'premium':     { label: 'Premium',     spec: '5 sites · 20GB SSD · 200GB banda', type: 'Compartilhada' },
-        'business':    { label: 'Business',    spec: 'Sites ilimitados · 50GB SSD',       type: 'Compartilhada' },
-        'vps-starter': { label: 'VPS Starter', spec: '2 vCPU · 4GB RAM · 80GB SSD',     type: 'VPS' },
-        'vps-pro':     { label: 'VPS Pro',     spec: '4 vCPU · 8GB RAM · 160GB SSD',    type: 'VPS' },
-        'vps-ultra':   { label: 'VPS Ultra',   spec: '8 vCPU · 16GB RAM · 320GB SSD',   type: 'VPS' },
-      };
-      sectionTitle('Planos de Hospedagem');
-      doc.setFillColor(255, 247, 237);
-      doc.setDrawColor(...O); doc.setLineWidth(0.4);
-      doc.roundedRect(14, y, 182, 14, 2, 2, 'FD');
-      doc.setTextColor(...O); doc.setFont('helvetica', 'bold'); doc.setFontSize(8);
-      doc.text('⚠  Serviços a serem contratados diretamente pelo cliente na Hostinger (hostinger.com.br)', 18, y + 9);
-      y += 19;
-      Array.from(hostings).forEach((h, i) => {
-        const hl = hostingLabels[h];
-        row(`${hl.label} (${hl.type})`, fmt(HOSTING_PRICES[h]) + '/mês', i % 2 === 0);
-      });
-      badge('RECOMENDADO PELA KEALABS', 17, y - 2, GR);
-      y += 4;
-    }
-
-    // ── PANDA VIDEOS ─────────────────────────────────────────────────────────
     if (pandaPlan) {
       const pp = PANDA_PLANS[pandaPlan];
-      sectionTitle('Panda Videos');
-      row('Plano', pp.label, false);
-      row('Armazenamento', pp.storage, true);
-      row('Banda', pp.bandwidth, false);
-      row('Mensalidade', fmt(pp.monthly) + '/mês', true, true);
+      sections.push({ title: 'Panda Videos', rows: [
+        { label: 'Plano', value: pp.label },
+        { label: 'Armazenamento', value: pp.storage },
+        { label: 'Banda', value: pp.bandwidth },
+        { label: 'Mensalidade', value: fmt(pp.monthly) + '/mês', bold: true },
+      ]});
     }
 
-    // ── BUNNY.NET ─────────────────────────────────────────────────────────────
     if (bunneyPlan) {
       const bp = BUNNEY_PLANS[bunneyPlan];
-      sectionTitle('Bunny.net CDN');
-      row('Plano', bp.label, false);
-      row('Armazenamento', bp.storage, true);
-      row('Banda', bp.bandwidth, false);
-      row('Mensalidade', bp.monthly > 0 ? fmt(bp.monthly) + '/mês' : 'Sob demanda', true, true);
+      sections.push({ title: 'Bunny.net CDN', rows: [
+        { label: 'Plano', value: bp.label },
+        { label: 'Armazenamento', value: bp.storage },
+        { label: 'Banda', value: bp.bandwidth },
+        { label: 'Mensalidade', value: bp.monthly > 0 ? fmt(bp.monthly) + '/mês' : 'Sob demanda', bold: true },
+      ]});
     }
 
-    // ── RESUMO FINANCEIRO ─────────────────────────────────────────────────────
-    y += 4;
-    doc.setFillColor(...O);
-    doc.rect(14, y, 182, 8, 'F');
-    doc.setTextColor(...W); doc.setFont('helvetica', 'bold'); doc.setFontSize(9);
-    doc.text('RESUMO FINANCEIRO', 17, y + 5.5);
-    y += 12;
+    const hostingLabels: Record<string, { label: string; spec: string }> = {
+      'single':      { label: 'Single (Compartilhada)',      spec: '1 site · 10GB SSD · 100GB banda' },
+      'premium':     { label: 'Premium (Compartilhada)',     spec: '5 sites · 20GB SSD · 200GB banda' },
+      'business':    { label: 'Business (Compartilhada)',    spec: 'Sites ilimitados · 50GB SSD' },
+      'vps-starter': { label: 'VPS Starter',                 spec: '2 vCPU · 4GB RAM · 80GB SSD' },
+      'vps-pro':     { label: 'VPS Pro',                     spec: '4 vCPU · 8GB RAM · 160GB SSD' },
+      'vps-ultra':   { label: 'VPS Ultra',                   spec: '8 vCPU · 16GB RAM · 320GB SSD' },
+    };
+    const hostingRows = Array.from(hostings).map(h => ({
+      label: hostingLabels[h]?.label ?? h,
+      spec:  hostingLabels[h]?.spec  ?? '',
+      price: fmt(HOSTING_PRICES[h]),
+    }));
 
-    doc.setFillColor(...O);
-    doc.roundedRect(14, y, 87, 22, 2, 2, 'F');
-    doc.setTextColor(...W); doc.setFontSize(8); doc.setFont('helvetica', 'normal');
-    doc.text('INVESTIMENTO LÍQUIDO (SETUP)', 57, y + 7, { align: 'center' });
-    doc.setFontSize(14); doc.setFont('helvetica', 'bold');
-    doc.text(fmt(preview.setup), 57, y + 17, { align: 'center' });
+    const bruto   = calcCobranca(setupComCliente, installments);
+    const semAnt  = calcLiquidoSemAnt(bruto, installments);
+    const comAnt  = calcLiquidoComAnt(bruto, installments);
+    const mdrPct  = (mdrRate(installments) * 100).toFixed(2);
 
-    doc.setFillColor(...D);
-    doc.roundedRect(109, y, 87, 22, 2, 2, 'F');
-    doc.setTextColor(...W); doc.setFontSize(8); doc.setFont('helvetica', 'normal');
-    doc.text('COBRAR DO CLIENTE', 152, y + 7, { align: 'center' });
-    doc.setFontSize(14); doc.setFont('helvetica', 'bold');
-    doc.text(`${installments}x ${fmt(calcInstallment(setupComCliente, installments))}`, 152, y + 17, { align: 'center' });
-    y += 28;
-
-    const brutoPDF  = calcCobranca(setupComCliente, installments);
-    const semAntPDF = calcLiquidoSemAnt(brutoPDF, installments);
-    const comAntPDF = calcLiquidoComAnt(brutoPDF, installments);
-    const mdrPDF    = (mdrRate(installments) * 100).toFixed(2);
-    doc.setTextColor(...G); doc.setFont('helvetica', 'italic'); doc.setFontSize(7.5);
-    doc.text(`* Cobrança: ${installments}x ${fmt(calcInstallment(setupComCliente, installments))} = ${fmt(brutoPDF)} (MDR ${mdrPDF}% + R$ ${TAXA_FIXA.toFixed(2)}/transação).`, 14, y); y += 5;
-    doc.text(`  Líquido mês a mês: ${fmt(semAntPDF)} • Líquido antecipado (2 dias): ${fmt(comAntPDF)} (ant. 1,7% a.m. / ciclo ${CICLO_DIAS} dias).`, 14, y); y += 5;
-    if (hostings.size > 0) {
-      doc.text('* O valor da hospedagem é uma estimativa. O cliente contrata diretamente na Hostinger e pode variar conforme promoções.', 14, y);
-      y += 5;
-    }
-
-    // ── FOOTER ────────────────────────────────────────────────────────────────
-    doc.setFillColor(...O);
-    doc.rect(0, 285, 210, 12, 'F');
-    doc.setTextColor(...W); doc.setFontSize(7.5); doc.setFont('helvetica', 'normal');
-    doc.text('KeaLabs — kealabs.cloud — Tecnologia que transforma negócios', 14, 292);
-    doc.text(`Gerado em ${new Date().toLocaleString('pt-BR')}`, 196, 292, { align: 'right' });
-
-    doc.save(`proposta-${clientName.replace(/\s+/g, '-').toLowerCase() || 'kealabs'}.pdf`);
+    return {
+      clientName,
+      clientEmail:    clientEmail   || undefined,
+      clientCpfCnpj: clientCpfCnpj || undefined,
+      clientPhone:    clientPhone   || undefined,
+      sections,
+      hosting: hostingRows.length > 0 ? hostingRows : undefined,
+      setupValue:       fmt(preview.setup),
+      clientCharge:     fmt(setupComCliente),
+      installments,
+      installmentValue: fmt(calcInstallment(setupComCliente, installments)),
+      totalCharge:      fmt(bruto),
+      liquidMensal:     fmt(semAnt),
+      liquidAntecipado: fmt(comAnt),
+      mdrInfo: `${installments}x ${fmt(calcInstallment(setupComCliente, installments))} = ${fmt(bruto)} · MDR ${mdrPct}% + R$ ${TAXA_FIXA.toFixed(2)}/transação`,
+      date: new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' }),
+    };
   };
 
-  return (
+  const generatePDF = async () => {
+    const payload = buildPdfPayload();
+    const clientSlug = clientName.replace(/\s+/g, '-').toLowerCase() || 'kealabs';
+    try {
+      const apiBase = (import.meta.env.VITE_API_URL as string | undefined) ?? 'https://srv1023256.hstgr.cloud';
+      const res = await fetch(`${apiBase}/k1/api/quotes/pdf`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error(`Erro ao gerar PDF: ${res.status}`);
+      const blob = await res.blob();
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href     = url;
+      a.download = `proposta-${clientSlug}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert('Falha ao gerar PDF. Verifique a conexão com o servidor.');
+      console.error(err);
+    }
+  };  return (
     <div className="max-w-3xl mx-auto px-6 py-10 flex flex-col gap-8">
 
       {/* Título */}
