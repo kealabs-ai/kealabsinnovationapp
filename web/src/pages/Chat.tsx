@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, Loader2, Trash2, Sparkles } from 'lucide-react';
+import { Send, Bot, User, Trash2, Sparkles } from 'lucide-react';
 import { chatApi } from '../lib/api';
 import type { ChatMessage, ChatSession } from '../lib/api';
 import { useAgentProfile } from '../lib/useAgentProfile';
