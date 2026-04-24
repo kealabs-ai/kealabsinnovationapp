@@ -9,7 +9,7 @@ export function Settings() {
   const { settings, update, reset } = useSettings();
   const { profile, update: updateProfile, reset: resetProfile } = useAgentProfile();
   const [saved, setSaved] = useState(false);
-  const [tab, setTab] = useState<'pricing' | 'agent'>('pricing');
+  const [tab, setTab] = useState<'pricing' | 'agent' | 'llm'>('pricing');
 
   // ── Pricing helpers ──────────────────────────────────────────────────────────
   const field = (
@@ -80,7 +80,7 @@ export function Settings() {
       {/* Tabs */}
       <div className="flex gap-2 p-1 rounded-2xl"
         style={{ backgroundColor: 'var(--kea-surface)', border: '1px solid var(--kea-border)' }}>
-        {([['pricing', '💰 Precificação'], ['agent', '🤖 Perfil do Agente']] as const).map(([key, label]) => (
+        {([['pricing', '💰 Precificação'], ['agent', '🤖 Perfil do Agente'], ['llm', '🧠 Modelo de IA']] as const).map(([key, label]) => (
           <button key={key} onClick={() => setTab(key)}
             className="flex-1 py-2 rounded-xl text-sm font-bold transition-all"
             style={tab === key ? { backgroundColor: '#EA580C', color: '#fff' } : { color: 'var(--kea-body)' }}>
@@ -224,6 +224,95 @@ export function Settings() {
           </div>
         </div>
       )}
+
+      {/* ── TAB: LLM ── */}
+      {tab === 'llm' && (() => {
+        const LLM_OPTIONS: Record<string, { label: string; models: { value: string; label: string }[] }> = {
+          gemini: {
+            label: 'Google Gemini',
+            models: [
+              { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash (rápido)' },
+              { value: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash' },
+              { value: 'gemini-1.5-pro',   label: 'Gemini 1.5 Pro (mais capaz)' },
+            ],
+          },
+          openai: {
+            label: 'OpenAI',
+            models: [
+              { value: 'gpt-4o-mini',   label: 'GPT-4o Mini (econômico)' },
+              { value: 'gpt-4o',        label: 'GPT-4o' },
+              { value: 'gpt-4-turbo',   label: 'GPT-4 Turbo' },
+              { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo (legado)' },
+            ],
+          },
+          groq: {
+            label: 'Groq (ultra-rápido)',
+            models: [
+              { value: 'llama-3.3-70b-versatile', label: 'LLaMA 3.3 70B Versatile' },
+              { value: 'llama-3.1-8b-instant',    label: 'LLaMA 3.1 8B Instant' },
+              { value: 'mixtral-8x7b-32768',       label: 'Mixtral 8x7B' },
+            ],
+          },
+        };
+        const currentProvider = settings.llmProvider || 'gemini';
+        const currentModels = LLM_OPTIONS[currentProvider]?.models ?? [];
+        return (
+          <div className="card flex flex-col gap-6">
+            <div>
+              <h2 className="font-black text-base" style={{ color: 'var(--kea-heading)' }}>🧠 Modelo de IA do Chat</h2>
+              <p className="text-xs mt-1" style={{ color: 'var(--kea-body)' }}>
+                Escolha o provider e o modelo LLM usado pelo agente nas conversôes.
+              </p>
+            </div>
+
+            {/* Provider */}
+            <div>
+              <label className="label">Provider</label>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mt-1">
+                {Object.entries(LLM_OPTIONS).map(([key, opt]) => (
+                  <button key={key}
+                    onClick={() => {
+                      const firstModel = opt.models[0].value;
+                      update({ llmProvider: key, llmModel: firstModel });
+                    }}
+                    className="p-3 rounded-xl border-2 text-left text-sm transition-all hover:border-orange-500"
+                    style={{
+                      backgroundColor: currentProvider === key ? '#FFF1E6' : 'var(--kea-surface)',
+                      borderColor: currentProvider === key ? '#EA580C' : 'var(--kea-border)',
+                      color: 'var(--kea-heading)',
+                    }}>
+                    <span className="font-bold">{opt.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Modelo */}
+            <div>
+              <label className="label">Modelo</label>
+              <div className="flex flex-col gap-2 mt-1">
+                {currentModels.map((m) => (
+                  <button key={m.value}
+                    onClick={() => update({ llmModel: m.value })}
+                    className="p-3 rounded-xl border-2 text-left text-sm transition-all hover:border-orange-500"
+                    style={{
+                      backgroundColor: settings.llmModel === m.value ? '#FFF1E6' : 'var(--kea-surface)',
+                      borderColor: settings.llmModel === m.value ? '#EA580C' : 'var(--kea-border)',
+                      color: 'var(--kea-heading)',
+                    }}>
+                    <span className="font-bold">{m.label}</span>
+                    <span className="block text-xs font-mono mt-0.5" style={{ color: 'var(--kea-subtle)' }}>{m.value}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <p className="text-xs" style={{ color: 'var(--kea-subtle)' }}>
+              Provider atual: <strong>{currentProvider}</strong> — Modelo: <strong>{settings.llmModel}</strong>
+            </p>
+          </div>
+        );
+      })()}
 
       {/* Footer */}
       <div className="flex items-center gap-4">

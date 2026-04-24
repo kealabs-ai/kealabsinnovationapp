@@ -153,8 +153,146 @@ export function Chat() {
     new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-6 flex flex-col gap-4"
-      style={{ height: 'calc(100vh - 64px)' }}>
+    <div className="h-full flex flex-col max-w-3xl mx-auto w-full px-4 py-4 gap-3">
+
+      {/* Header */}
+      <div className="flex items-center justify-between flex-shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-orange-600 to-orange-400 flex items-center justify-center shadow">
+            <Bot size={20} className="text-white" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <p className="font-black text-base" style={{ color: 'var(--kea-heading)' }}>
+                {profile.name}
+              </p>
+              <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full"
+                style={{ background: '#DCFCE7', color: '#166534' }}>
+                <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                online
+              </span>
+            </div>
+            <p className="text-xs" style={{ color: 'var(--kea-body)' }}>
+              {profile.role} · {profile.company} · Gemini 2.0 Flash
+            </p>
+          </div>
+        </div>
+        {messages.length > 0 && (
+          <button onClick={clear} className="btn-ghost flex items-center gap-1.5 text-xs">
+            <Trash2 size={13} /> Limpar
+          </button>
+        )}
+      </div>
+
+      {/* Messages — área com scroll */}
+      <div className="flex-1 overflow-y-auto flex flex-col gap-3 pr-1 min-h-0">
+
+        {messages.length === 0 && (
+          <div className="flex flex-col items-center justify-center gap-4 py-10">
+            <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-orange-600 to-orange-400 flex items-center justify-center shadow-lg">
+              <Sparkles size={28} className="text-white" />
+            </div>
+            <div className="text-center">
+              <p className="font-black text-lg" style={{ color: 'var(--kea-heading)' }}>
+                Olá! Sou {profile.name}
+              </p>
+              <p className="text-sm mt-1 max-w-xs" style={{ color: 'var(--kea-body)' }}>
+                {profile.role} da {profile.company}. Posso te ajudar com orçamentos,
+                dúvidas sobre serviços e muito mais.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full max-w-lg mt-2">
+              {SUGGESTIONS.map((s) => (
+                <button key={s} onClick={() => send(s)}
+                  className="text-left text-xs px-3 py-2.5 rounded-xl border-2 transition-all hover:border-orange-500 hover:bg-orange-50"
+                  style={{ borderColor: 'var(--kea-border)', color: 'var(--kea-body)', backgroundColor: 'var(--kea-surface)' }}>
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {messages.map((m) => (
+          <div key={m.id} className={`flex gap-2.5 ${m.role === 'user' ? 'flex-row-reverse' : ''}`}>
+            <div className={`w-7 h-7 rounded-xl flex-shrink-0 flex items-center justify-center mt-0.5 ${
+              m.role === 'model'
+                ? 'bg-gradient-to-br from-orange-600 to-orange-400'
+                : 'bg-gradient-to-br from-slate-600 to-slate-500'
+            }`}>
+              {m.role === 'model'
+                ? <Bot size={14} className="text-white" />
+                : <User size={14} className="text-white" />}
+            </div>
+            <div className={`flex flex-col gap-1 max-w-[80%] ${m.role === 'user' ? 'items-end' : ''}`}>
+              <div className="px-4 py-2.5 rounded-2xl text-sm leading-relaxed"
+                style={m.role === 'model'
+                  ? { backgroundColor: 'var(--kea-surface)', border: '1px solid var(--kea-border)', color: 'var(--kea-heading)' }
+                  : { backgroundColor: '#EA580C', color: '#fff' }}>
+                {m.role === 'model'
+                  ? <Markdown text={m.content} />
+                  : <span className="whitespace-pre-wrap">{m.content}</span>}
+              </div>
+              <span className="text-[10px] px-1" style={{ color: 'var(--kea-subtle)' }}>
+                {fmt(m.sent_at)}
+              </span>
+            </div>
+          </div>
+        ))}
+
+        {loading && (
+          <div className="flex gap-2.5">
+            <div className="w-7 h-7 rounded-xl flex-shrink-0 flex items-center justify-center bg-gradient-to-br from-orange-600 to-orange-400">
+              <Bot size={14} className="text-white" />
+            </div>
+            <div className="px-4 py-3 rounded-2xl flex items-center gap-2"
+              style={{ backgroundColor: 'var(--kea-surface)', border: '1px solid var(--kea-border)' }}>
+              <span className="flex gap-1">
+                {[0, 1, 2].map((i) => (
+                  <span key={i} className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-bounce"
+                    style={{ animationDelay: `${i * 0.15}s` }} />
+                ))}
+              </span>
+              <span className="text-sm" style={{ color: 'var(--kea-body)' }}>Digitando...</span>
+            </div>
+          </div>
+        )}
+
+        {error && (
+          <div className="flex items-start gap-3 px-4 py-3 rounded-xl"
+            style={{ background: '#FEF2F2', border: '1px solid #FECACA' }}>
+            <span className="text-base flex-shrink-0">⚠️</span>
+            <div className="flex-1">
+              <p className="text-xs font-bold" style={{ color: '#DC2626' }}>Erro</p>
+              <p className="text-xs mt-0.5" style={{ color: '#B91C1C' }}>{error}</p>
+            </div>
+            <button onClick={() => setError('')}
+              className="text-xs font-bold flex-shrink-0" style={{ color: '#DC2626' }}>✕</button>
+          </div>
+        )}
+
+        <div ref={bottomRef} />
+      </div>
+
+      {/* Input — fixo no fundo */}
+      <div className="flex gap-2 items-end flex-shrink-0 pb-2">
+        <textarea
+          ref={inputRef}
+          rows={1}
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={onKey}
+          placeholder="Digite sua mensagem... (Enter para enviar)"
+          className="input flex-1 resize-none"
+          style={{ minHeight: '44px', maxHeight: '120px' }}
+        />
+        <button onClick={() => send()} disabled={loading || !input.trim()}
+          className="btn-primary p-3 flex-shrink-0 disabled:opacity-40">
+          <Send size={16} />
+        </button>
+      </div>
+    </div>
+  );
 
       {/* Header */}
       <div className="flex items-center justify-between flex-shrink-0">

@@ -10,12 +10,27 @@ import { Chat } from './pages/Chat';
 import { Prospects } from './pages/Prospects';
 import { Users } from './pages/Users';
 
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { Navbar } from './components/Navbar';
+import { Footer } from './components/Footer';
+import { AuthGuard } from './components/AuthGuard';
+import { Login } from './pages/Login';
+import { Dashboard } from './pages/Dashboard';
+import { Builder } from './pages/Builder';
+import { Settings } from './pages/Settings';
+import { Chat } from './pages/Chat';
+import { Prospects } from './pages/Prospects';
+import { Users } from './pages/Users';
+
 function PrivateLayout() {
+  const { pathname } = useLocation();
+  const isChat = pathname === '/chat';
+
   return (
     <AuthGuard>
-      <div className="min-h-screen flex flex-col">
+      <div className="flex flex-col" style={{ height: '100dvh' }}>
         <Navbar />
-        <main className="flex-1">
+        <main className="flex-1 min-h-0 overflow-hidden">
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/builder" element={<Builder />} />
@@ -26,7 +41,7 @@ function PrivateLayout() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
-        <Footer />
+        {!isChat && <Footer />}
       </div>
     </AuthGuard>
   );

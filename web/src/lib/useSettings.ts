@@ -47,6 +47,8 @@ export interface ServiceSettings {
   installmentAntecipacaoMensal: number;
   installmentCicloDias: number;
   commissionRate: number;
+  llmProvider: string;
+  llmModel: string;
 }
 
 // Mapa: chave do frontend → setting_key no banco
@@ -80,6 +82,8 @@ const KEY_MAP: Record<keyof ServiceSettings, string> = {
   installmentAntecipacaoMensal: 'installment_antecipacao_mensal',
   installmentCicloDias: 'installment_ciclo_dias',
   commissionRate: 'commission_rate',
+  llmProvider: 'llm_provider',
+  llmModel: 'llm_model',
 };
 
 export const DEFAULTS: ServiceSettings = {
@@ -106,6 +110,8 @@ export const DEFAULTS: ServiceSettings = {
   installmentAntecipacaoMensal: 1.7,
   installmentCicloDias: 32,
   commissionRate: 0,
+  llmProvider: 'gemini',
+  llmModel: 'gemini-2.0-flash',
 };
 
 const CACHE_KEY = 'keaflow-settings';
@@ -115,14 +121,18 @@ function fromApi(rows: { setting_key: string; setting_value: string }[]): Servic
     Object.entries(KEY_MAP).map(([k, v]) => [v, k as keyof ServiceSettings])
   );
   const result: Partial<ServiceSettings> = {};
+  const STRING_KEYS: (keyof ServiceSettings)[] = ['llmProvider', 'llmModel'];
   for (const row of rows) {
     const key = reverseMap[row.setting_key];
     if (key) {
-      const val = parseFloat(row.setting_value);
-      result[key] = key === 'installmentInterestRate' ? val / 100 : val;
+      if (STRING_KEYS.includes(key)) {
+        (result as Record<string, unknown>)[key] = row.setting_value;
+      } else {
+        const val = parseFloat(row.setting_value);
+        (result as Record<string, unknown>)[key] = key === 'installmentInterestRate' ? val / 100 : val;
+      }
     }
   }
-  // Garante que campos ausentes no banco usam os valores padrão
   return { ...DEFAULTS, ...result };
 }
 
@@ -150,13 +160,17 @@ export function useSettings() {
   }, []);
 
   const update = (patch: Partial<ServiceSettings>) => {
+    const STRING_KEYS: (keyof ServiceSettings)[] = ['llmProvider', 'llmModel'];
     setSettings((prev) => {
       const next = { ...prev, ...patch } as ServiceSettings;
       localStorage.setItem(CACHE_KEY, JSON.stringify(next));
-      for (const [k, v] of Object.entries(patch) as [keyof ServiceSettings, number][]) {
+      for (const [k, v] of Object.entries(patch) as [keyof ServiceSettings, unknown][]) {
         const dbKey = KEY_MAP[k];
-        // interest_rate é salvo como percentual na API (ex: 0.035 → "3.5")
-        const apiVal = k === 'installmentInterestRate' ? String(v * 100) : String(v);
+        const apiVal = STRING_KEYS.includes(k)
+          ? String(v)
+          : k === 'installmentInterestRate'
+            ? String((v as number) * 100)
+            : String(v);
         if (dbKey) settingsApi.upsert(dbKey, apiVal).catch(() => {});
       }
       return next;
