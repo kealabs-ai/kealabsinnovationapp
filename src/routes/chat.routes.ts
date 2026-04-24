@@ -113,17 +113,18 @@ export async function chatRoutes(app: FastifyInstance) {
   app.post<{ Body: { session_id: string; role: 'user' | 'model'; content: string } }>('/chat/messages', async (req, reply) => {
     const { session_id, role, content } = req.body;
     const session = sessions.get(session_id);
-    if (!session) return reply.status(404).send({ error: 'Session not found' });
+    if (!session) return reply.status(404).send({ error: 'Sessão não encontrada. Inicie uma nova conversa.' });
 
     const sessionMsgs = messages.get(session_id) ?? [];
 
-    // Salva mensagem do usuário
     const userMsg: ChatMessage = { id: msgCounter++, session_id, role, content, sent_at: new Date().toISOString() };
     sessionMsgs.push(userMsg);
     messages.set(session_id, sessionMsgs);
 
-    // Se for mensagem do usuário, chama Gemini e retorna resposta do modelo
     if (role === 'user') {
+      if (!process.env.GEMINI_API_KEY) {
+        return reply.status(500).send({ error: 'Chave da API Gemini não configurada no servidor.' });
+      }
       try {
         const model = genAI.getGenerativeModel({
           model: 'gemini-2.0-flash',
@@ -139,14 +140,32 @@ export async function chatRoutes(app: FastifyInstance) {
         const result = await chat.sendMessage(content);
         const text = result.response.text();
 
+        if (!text) return reply.status(500).send({ error: 'O modelo não retornou resposta. Tente novamente.' });
+
         const aiMsg: ChatMessage = { id: msgCounter++, session_id, role: 'model', content: text, sent_at: new Date().toISOString() };
         sessionMsgs.push(aiMsg);
         messages.set(session_id, sessionMsgs);
 
         return reply.send([userMsg, aiMsg]);
       } catch (err) {
-        const errMsg = err instanceof Error ? err.message : 'Gemini error';
-        return reply.status(500).send({ error: errMsg });
+        // Remove a mensagem do usuário do histórico para não poluir em caso de retry
+        const idx = sessionMsgs.indexOf(userMsg);
+        if (idx !== -1) sessionMsgs.splice(idx, 1);
+        messages.set(session_id, sessionMsgs);
+
+        const raw = err instanceof Error ? err.message : String(err);
+        // Traduz erros comuns da API Gemini
+        const friendly = raw.includes('API_KEY') || raw.includes('API key')
+          ? 'Chave da API Gemini inválida ou sem permissão.'
+          : raw.includes('quota') || raw.includes('RESOURCE_EXHAUSTED')
+          ? 'Limite de requisições da API atingido. Tente em alguns instantes.'
+          : raw.includes('SAFETY')
+          ? 'Mensagem bloqueada por políticas de segurança do modelo.'
+          : raw.includes('fetch') || raw.includes('network') || raw.includes('ENOTFOUND')
+          ? 'Sem conexão com a API Gemini. Verifique a rede do servidor.'
+          : `Erro ao processar resposta: ${raw}`;
+
+        return reply.status(500).send({ error: friendly });
       }
     }
 

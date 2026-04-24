@@ -112,9 +112,24 @@ export function Chat() {
         ...prev.filter((m) => m.id !== optimistic.id),
         ...(newMsgs.length > 0 ? newMsgs : [optimistic]),
       ]);
-    } catch {
-      setError('Erro ao enviar mensagem. Tente novamente.');
+    } catch (err: unknown) {
       setMessages((prev) => prev.filter((m) => m.id !== optimistic.id));
+
+      // Extrai mensagem de erro da resposta da API
+      const axiosErr = err as { response?: { status?: number; data?: { error?: string } } };
+      const status   = axiosErr?.response?.status;
+      const apiMsg   = axiosErr?.response?.data?.error;
+
+      if (status === 404) {
+        // Sessão expirou no servidor (reinicialização) — recria automaticamente
+        localStorage.removeItem(SESSION_KEY);
+        setSession(null);
+        setMessages([]);
+        await createSession();
+        setError('Sessão reiniciada. Por favor, envie sua mensagem novamente.');
+      } else {
+        setError(apiMsg ?? 'Erro ao enviar mensagem. Tente novamente.');
+      }
     } finally {
       setLoading(false);
       setTimeout(() => inputRef.current?.focus(), 50);
@@ -245,10 +260,16 @@ export function Chat() {
         )}
 
         {error && (
-          <p className="text-xs text-center px-4 py-2 rounded-xl"
-            style={{ background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' }}>
-            {error}
-          </p>
+          <div className="flex items-start gap-3 px-4 py-3 rounded-xl"
+            style={{ background: '#FEF2F2', border: '1px solid #FECACA' }}>
+            <span className="text-base flex-shrink-0">⚠️</span>
+            <div className="flex-1">
+              <p className="text-xs font-bold" style={{ color: '#DC2626' }}>Erro</p>
+              <p className="text-xs mt-0.5" style={{ color: '#B91C1C' }}>{error}</p>
+            </div>
+            <button onClick={() => setError('')}
+              className="text-xs font-bold flex-shrink-0" style={{ color: '#DC2626' }}>✕</button>
+          </div>
         )}
 
         <div ref={bottomRef} />
