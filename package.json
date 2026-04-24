@@ -11,7 +11,7 @@
     "build:api": "tsc",
     "build:web": "cd web && npm run build",
     "build:all": "npm run build:api && npm run build:web",
-    "start": "node web/server.js",
+    "start": "node dist/server.js",
     "install:all": "npm install && cd web && npm install"
   },
   "dependencies": {
