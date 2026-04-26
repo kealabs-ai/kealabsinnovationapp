@@ -232,7 +232,7 @@ CREATE TABLE chat_messages (
 
 CREATE TABLE system_settings (
   setting_key   VARCHAR(100) NOT NULL,
-  setting_value VARCHAR(500) NOT NULL,
+  setting_value TEXT         NOT NULL,
   description   VARCHAR(255)     NULL,
   updated_at    DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
 
@@ -398,7 +398,13 @@ INSERT INTO system_settings (setting_key, setting_value, description) VALUES
   ('hosting_business',         '26.99',  'Hospedagem Business/mês'),
   ('hosting_vps_starter',      '49.90',  'VPS Starter/mês'),
   ('hosting_vps_pro',          '89.90',  'VPS Pro/mês'),
-  ('hosting_vps_ultra',        '149.90', 'VPS Ultra/mês');
+  ('hosting_vps_ultra',        '149.90', 'VPS Ultra/mês'),
+  ('llm_provider',             'gemini', 'Provider LLM ativo'),
+  ('llm_model',                'gemini-2.0-flash', 'Modelo LLM ativo'),
+  ('llm_key_gemini',           '',       'API Key Google Gemini'),
+  ('llm_key_openai',           '',       'API Key OpenAI'),
+  ('llm_key_groq',             '',       'API Key Groq'),
+  ('llm_key_anthropic',        '',       'API Key Anthropic');
 
 INSERT INTO agent_profiles
   (name, company, role, tone, llm_model, services, objections, closing_style, system_prompt, is_active)

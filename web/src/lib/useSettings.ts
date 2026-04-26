@@ -88,10 +88,10 @@ const KEY_MAP: Record<keyof ServiceSettings, string> = {
   commissionRate: 'commission_rate',
   llmProvider: 'llm_provider',
   llmModel: 'llm_model',
-  apiKeyGemini: 'api_key_gemini',
-  apiKeyOpenai: 'api_key_openai',
-  apiKeyAnthropic: 'api_key_anthropic',
-  apiKeyGroq: 'api_key_groq',
+  apiKeyGemini: 'llm_key_gemini',
+  apiKeyOpenai: 'llm_key_openai',
+  apiKeyAnthropic: 'llm_key_anthropic',
+  apiKeyGroq: 'llm_key_groq',
 };
 
 export const DEFAULTS: ServiceSettings = {
