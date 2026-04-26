@@ -251,10 +251,13 @@ export function Chat() {
               {sessions.map(s => {
                 const active = s.id === session?.id;
                 return (
-                  <button
+                  <div
                     key={s.id}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => switchSession(s)}
-                    className="w-full text-left px-3 py-2.5 flex items-start gap-2 group transition-colors"
+                    onKeyDown={e => e.key === 'Enter' && switchSession(s)}
+                    className="w-full text-left px-3 py-2.5 flex items-start gap-2 group transition-colors cursor-pointer"
                     style={{
                       backgroundColor: active ? '#FFF1E6' : 'transparent',
                       borderLeft: active ? '3px solid #EA580C' : '3px solid transparent',
@@ -277,7 +280,7 @@ export function Chat() {
                     >
                       <Trash2 size={11} />
                     </button>
-                  </button>
+                  </div>
                 );
               })}
             </div>
