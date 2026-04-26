@@ -9,10 +9,11 @@ const SESSION_KEY = 'keaflow-chat-session-id';
 
 const LLM_MODELS: { value: string; label: string; provider: string }[] = [
   // Google Gemini
-  { value: 'gemini-2.0-flash',                   label: 'Gemini 2.0 Flash',           provider: 'Google Gemini' },
-  { value: 'gemini-2.0-flash-lite',              label: 'Gemini 2.0 Flash Lite',      provider: 'Google Gemini' },
-  { value: 'gemini-2.5-flash-preview-05-20',     label: 'Gemini 2.5 Flash Preview',   provider: 'Google Gemini' },
-  { value: 'gemini-2.5-pro-preview-06-05',       label: 'Gemini 2.5 Pro Preview',     provider: 'Google Gemini' },
+  { value: 'gemini-2.0-flash',              label: 'Gemini 2.0 Flash',        provider: 'Google Gemini' },
+  { value: 'gemini-2.0-flash-lite',         label: 'Gemini 2.0 Flash Lite',   provider: 'Google Gemini' },
+  { value: 'gemini-1.5-flash',                 label: 'Gemini 1.5 Flash',           provider: 'Google Gemini' },
+  { value: 'gemini-1.5-flash-8b',              label: 'Gemini 1.5 Flash 8B',        provider: 'Google Gemini' },
+  { value: 'gemini-1.5-pro',                   label: 'Gemini 1.5 Pro',             provider: 'Google Gemini' },
   // OpenAI
   { value: 'gpt-4o-mini',                        label: 'GPT-4o Mini',                provider: 'OpenAI'        },
   { value: 'gpt-4o',                             label: 'GPT-4o',                     provider: 'OpenAI'        },
@@ -82,6 +83,7 @@ export function Chat() {
   const [input, setInput]           = useState('');
   const [loading, setLoading]       = useState(false);
   const [error, setError]           = useState('');
+  const [errorDetail, setErrorDetail] = useState('');
   const [model, setModel]           = useState(profile.llm_model || 'gemini-2.0-flash');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [modelOpen, setModelOpen]   = useState(false);
@@ -186,17 +188,23 @@ export function Chat() {
       loadSessions();
     } catch (err: unknown) {
       setMessages(prev => prev.filter(m => m.id !== optimistic.id));
-      const axiosErr = err as { response?: { status?: number; data?: { error?: string } } };
+      const axiosErr = err as { response?: { status?: number; data?: unknown } };
       const status   = axiosErr?.response?.status;
-      const apiMsg   = axiosErr?.response?.data?.error;
+      const rawData  = axiosErr?.response?.data;
+      const apiMsg   = (rawData as { error?: string })?.error
+        ?? (rawData as { message?: string })?.message
+        ?? 'Erro ao enviar mensagem. Tente novamente.';
+      const detail   = rawData ? JSON.stringify(rawData, null, 2) : '';
       if (status === 404) {
         localStorage.removeItem(SESSION_KEY);
         setSession(null);
         setMessages([]);
         await createSession();
         setError('Sessão reiniciada. Por favor, envie sua mensagem novamente.');
+        setErrorDetail('');
       } else {
-        setError(apiMsg ?? 'Erro ao enviar mensagem. Tente novamente.');
+        setError(`[${status ?? '?'}] ${apiMsg}`);
+        setErrorDetail(detail);
       }
     } finally {
       setLoading(false);
@@ -427,14 +435,26 @@ export function Chat() {
           )}
 
           {error && (
-            <div className="flex items-start gap-3 px-4 py-3 rounded-xl"
+            <div className="flex flex-col gap-2 px-4 py-3 rounded-xl"
               style={{ background: '#FEF2F2', border: '1px solid #FECACA' }}>
-              <span className="text-base flex-shrink-0">⚠️</span>
-              <div className="flex-1">
-                <p className="text-xs font-bold" style={{ color: '#DC2626' }}>Erro</p>
-                <p className="text-xs mt-0.5" style={{ color: '#B91C1C' }}>{error}</p>
+              <div className="flex items-start gap-3">
+                <span className="text-base flex-shrink-0">⚠️</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold" style={{ color: '#DC2626' }}>Erro</p>
+                  <p className="text-xs mt-0.5 break-words" style={{ color: '#B91C1C' }}>{error}</p>
+                </div>
+                <button onClick={() => { setError(''); setErrorDetail(''); }}
+                  className="text-xs font-bold flex-shrink-0" style={{ color: '#DC2626' }}>✕</button>
               </div>
-              <button onClick={() => setError('')} className="text-xs font-bold flex-shrink-0" style={{ color: '#DC2626' }}>✕</button>
+              {errorDetail && (
+                <details className="mt-1">
+                  <summary className="text-[10px] font-bold cursor-pointer select-none" style={{ color: '#DC2626' }}>
+                    Ver resposta completa
+                  </summary>
+                  <pre className="mt-1 text-[10px] overflow-x-auto p-2 rounded-lg whitespace-pre-wrap break-all"
+                    style={{ background: '#FEE2E2', color: '#7F1D1D' }}>{errorDetail}</pre>
+                </details>
+              )}
             </div>
           )}
 
