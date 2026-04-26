@@ -49,6 +49,10 @@ export interface ServiceSettings {
   commissionRate: number;
   llmProvider: string;
   llmModel: string;
+  apiKeyGemini: string;
+  apiKeyOpenai: string;
+  apiKeyAnthropic: string;
+  apiKeyGroq: string;
 }
 
 // Mapa: chave do frontend → setting_key no banco
@@ -84,6 +88,10 @@ const KEY_MAP: Record<keyof ServiceSettings, string> = {
   commissionRate: 'commission_rate',
   llmProvider: 'llm_provider',
   llmModel: 'llm_model',
+  apiKeyGemini: 'api_key_gemini',
+  apiKeyOpenai: 'api_key_openai',
+  apiKeyAnthropic: 'api_key_anthropic',
+  apiKeyGroq: 'api_key_groq',
 };
 
 export const DEFAULTS: ServiceSettings = {
@@ -112,6 +120,10 @@ export const DEFAULTS: ServiceSettings = {
   commissionRate: 0,
   llmProvider: 'gemini',
   llmModel: 'gemini-2.0-flash',
+  apiKeyGemini: '',
+  apiKeyOpenai: '',
+  apiKeyAnthropic: '',
+  apiKeyGroq: '',
 };
 
 const CACHE_KEY = 'keaflow-settings';
@@ -121,7 +133,7 @@ function fromApi(rows: { setting_key: string; setting_value: string }[]): Servic
     Object.entries(KEY_MAP).map(([k, v]) => [v, k as keyof ServiceSettings])
   );
   const result: Partial<ServiceSettings> = {};
-  const STRING_KEYS: (keyof ServiceSettings)[] = ['llmProvider', 'llmModel'];
+  const STRING_KEYS: (keyof ServiceSettings)[] = ['llmProvider', 'llmModel', 'apiKeyGemini', 'apiKeyOpenai', 'apiKeyAnthropic', 'apiKeyGroq'];
   for (const row of rows) {
     const key = reverseMap[row.setting_key];
     if (key) {
@@ -160,7 +172,7 @@ export function useSettings() {
   }, []);
 
   const update = (patch: Partial<ServiceSettings>) => {
-    const STRING_KEYS: (keyof ServiceSettings)[] = ['llmProvider', 'llmModel'];
+    const STRING_KEYS: (keyof ServiceSettings)[] = ['llmProvider', 'llmModel', 'apiKeyGemini', 'apiKeyOpenai', 'apiKeyAnthropic', 'apiKeyGroq'];
     setSettings((prev) => {
       const next = { ...prev, ...patch } as ServiceSettings;
       localStorage.setItem(CACHE_KEY, JSON.stringify(next));

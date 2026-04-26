@@ -125,6 +125,8 @@ export interface ChatSession {
   agent_name: string;
   agent_role: string;
   agent_tone: AgentTone;
+  llm_model?: string;
+  api_key?: string;
   created_at: string;
   updated_at: string;
 }
@@ -154,6 +156,7 @@ export interface AgentProfile {
   objections: string;
   closing_style: string;
   system_prompt?: string;
+  llm_model?: string;
   is_active: number;
   created_at: string;
   updated_at: string;
@@ -341,6 +344,7 @@ export const authApi = {
 export const agentsApi = {
   list:   ()                                                               => api.get<AgentProfile[]>('/agents'),
   active: ()                                                               => api.get<AgentProfile>('/agents/active'),
+  models: ()                                                               => api.get<{ models: string[] }>('/agents/models'),
   get:    (id: string)                                                     => api.get<AgentProfile>(`/agents/${id}`),
   create: (body: Omit<AgentProfile, 'id' | 'created_at' | 'updated_at'>) => api.post<AgentProfile>('/agents', body),
   update: (body: Partial<AgentProfile> & { id: string })                  => api.post<AgentProfile>('/agents/update', body),

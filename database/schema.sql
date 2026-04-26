@@ -196,6 +196,7 @@ CREATE TABLE chat_sessions (
   agent_name VARCHAR(100) NOT NULL DEFAULT 'Kea',
   agent_role VARCHAR(100) NOT NULL DEFAULT 'Consultora Comercial',
   agent_tone ENUM('formal','friendly','technical','consultive') NOT NULL DEFAULT 'consultive',
+  llm_model  VARCHAR(100) NOT NULL DEFAULT 'gemini-2.0-flash',
   created_at DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   updated_at DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
 
@@ -250,6 +251,7 @@ CREATE TABLE agent_profiles (
   company       VARCHAR(100) NOT NULL DEFAULT 'KeaLabs',
   role          VARCHAR(100) NOT NULL DEFAULT 'Consultora Comercial',
   tone          ENUM('formal','friendly','technical','consultive') NOT NULL DEFAULT 'consultive',
+  llm_model     VARCHAR(100) NOT NULL DEFAULT 'gemini-2.0-flash',
   services      TEXT         NOT NULL,
   objections    TEXT         NOT NULL,
   closing_style TEXT         NOT NULL,
@@ -399,12 +401,13 @@ INSERT INTO system_settings (setting_key, setting_value, description) VALUES
   ('hosting_vps_ultra',        '149.90', 'VPS Ultra/mês');
 
 INSERT INTO agent_profiles
-  (name, company, role, tone, services, objections, closing_style, system_prompt, is_active)
+  (name, company, role, tone, llm_model, services, objections, closing_style, system_prompt, is_active)
 VALUES (
   'Kea',
   'KeaLabs',
   'Consultora Comercial',
   'consultive',
+  'gemini-2.0-flash',
   'Sites Web, Mini Sites com Instagram, Business Intelligence, AI Agents',
   'Reconheça a objeção, valide a preocupação do cliente e reposicione o valor antes do preço.',
   'Proponha um próximo passo concreto: agendar uma call, enviar uma proposta ou iniciar um projeto piloto.',

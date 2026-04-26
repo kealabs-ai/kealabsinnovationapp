@@ -111,9 +111,9 @@ export function Prospects() {
 
       {/* Modal */}
       {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center"
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto py-8 px-4"
           style={{ background: 'rgba(0,0,0,0.5)' }}>
-          <div className="card w-full max-w-lg flex flex-col gap-4 max-h-[90vh] overflow-y-auto">
+          <div className="card w-full max-w-lg flex flex-col gap-4 my-auto">
             <div className="flex items-center justify-between">
               <h2 className="font-black text-lg" style={{ color: 'var(--kea-heading)' }}>
                 {editing ? 'Editar Prospect' : 'Novo Prospect'}

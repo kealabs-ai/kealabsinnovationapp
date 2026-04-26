@@ -12,6 +12,7 @@ export interface AgentProfileLocal {
   services: string;
   objections: string;
   closingStyle: string;
+  llm_model?: string;
 }
 
 export const TONE_LABELS: Record<AgentTone, string> = {
@@ -59,6 +60,7 @@ export function useAgentProfile() {
         services: a.services,
         objections: a.objections,
         closingStyle: a.closing_style,
+        llm_model: a.llm_model ?? 'gemini-2.0-flash',
       };
       agentIdRef.current = a.id;
       setProfile(merged);
@@ -80,6 +82,7 @@ export function useAgentProfile() {
         services: next.services,
         objections: next.objections,
         closing_style: next.closingStyle,
+        llm_model: next.llm_model ?? 'gemini-2.0-flash',
         is_active: 1,
       };
 
@@ -106,7 +109,7 @@ export function useAgentProfile() {
         name: DEFAULTS.name, company: DEFAULTS.company, tone: DEFAULTS.tone,
         role: DEFAULTS.role, system_prompt: DEFAULTS.systemPrompt,
         services: DEFAULTS.services, objections: DEFAULTS.objections,
-        closing_style: DEFAULTS.closingStyle, is_active: 1,
+        closing_style: DEFAULTS.closingStyle, llm_model: 'gemini-2.0-flash', is_active: 1,
       }).catch(() => {});
     }
   };

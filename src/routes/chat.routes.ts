@@ -9,6 +9,7 @@ interface ChatSession {
   agent_name: string;
   agent_role: string;
   agent_tone: string;
+  llm_model?: string;
   created_at: string;
   updated_at: string;
 }
@@ -85,6 +86,7 @@ export async function chatRoutes(app: FastifyInstance) {
       agent_name: req.body.agent_name ?? 'Kea',
       agent_role: req.body.agent_role ?? 'Consultora Comercial',
       agent_tone: req.body.agent_tone ?? 'consultive',
+      llm_model: req.body.llm_model ?? 'gemini-2.0-flash',
       client_id: req.body.client_id,
       quote_id: req.body.quote_id,
       created_at: now,
@@ -127,7 +129,7 @@ export async function chatRoutes(app: FastifyInstance) {
       }
       try {
         const model = genAI.getGenerativeModel({
-          model: 'gemini-2.0-flash',
+          model: session.llm_model ?? 'gemini-2.0-flash',
           systemInstruction: buildSystemPrompt(session),
         });
 
@@ -148,27 +150,4 @@ export async function chatRoutes(app: FastifyInstance) {
 
         return reply.send([userMsg, aiMsg]);
       } catch (err) {
-        // Remove a mensagem do usuário do histórico para não poluir em caso de retry
-        const idx = sessionMsgs.indexOf(userMsg);
-        if (idx !== -1) sessionMsgs.splice(idx, 1);
-        messages.set(session_id, sessionMsgs);
-
-        const raw = err instanceof Error ? err.message : String(err);
-        // Traduz erros comuns da API Gemini
-        const friendly = raw.includes('API_KEY') || raw.includes('API key')
-          ? 'Chave da API Gemini inválida ou sem permissão.'
-          : raw.includes('quota') || raw.includes('RESOURCE_EXHAUSTED')
-          ? 'Limite de requisições da API atingido. Tente em alguns instantes.'
-          : raw.includes('SAFETY')
-          ? 'Mensagem bloqueada por políticas de segurança do modelo.'
-          : raw.includes('fetch') || raw.includes('network') || raw.includes('ENOTFOUND')
-          ? 'Sem conexão com a API Gemini. Verifique a rede do servidor.'
-          : `Erro ao processar resposta: ${raw}`;
-
-        return reply.status(500).send({ error: friendly });
-      }
-    }
-
-    return reply.send([userMsg]);
-  });
-}
+   

@@ -1,4 +1,4 @@
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { Sun, Moon, Settings, MessageSquare, UserCircle2, LogOut } from 'lucide-react';
 import keaLogo from '../assets/kealabs_logo_strategic.png';
 import { useTheme } from '../lib/useTheme';
@@ -17,13 +17,17 @@ export function Navbar() {
   }
 
   const link = (to: string, label: string) => (
-    <Link to={to}
-      style={{ color: pathname === to ? undefined : 'var(--kea-body)' }}
-      className={`px-4 py-2 rounded-xl text-sm font-bold transition-colors ${
-        pathname === to ? 'bg-orange-600 text-white' : 'hover:text-orange-600'
-      }`}>
+    <NavLink 
+      to={to}
+      end={to === '/'}
+      style={({ isActive }) => ({ color: isActive ? undefined : 'var(--kea-body)' })}
+      className={({ isActive }) => 
+        `px-4 py-2 rounded-xl text-sm font-bold transition-colors ${
+          isActive ? 'bg-orange-600 text-white' : 'hover:text-orange-600'
+        }`
+      }>
       {label}
-    </Link>
+    </NavLink>
   );
 
   const iconBtn = (active: boolean) =>
