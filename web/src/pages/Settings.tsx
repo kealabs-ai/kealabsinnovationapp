@@ -1,6 +1,7 @@
 import { useSettings } from '../lib/useSettings';
 import { useAgentProfile, TONE_LABELS } from '../lib/useAgentProfile';
 import type { AgentProfileLocal } from '../lib/useAgentProfile';
+import { settingsApi } from '../lib/api';
 import { RotateCcw, Save, Bot, Eye, EyeOff } from 'lucide-react';
 import { useState } from 'react';
 import type React from 'react';
@@ -61,9 +62,15 @@ export function Settings() {
   );
 
   const handleSave = () => {
-    // Sincroniza llmModel do settings → profile do agente (local + servidor)
     const model = settings.llmModel ?? 'gemini-2.0-flash';
     updateProfile({ llm_model: model });
+    // Salva API keys no banco via settings service
+    settingsApi.saveLlmKeys({
+      gemini:    settings.apiKeyGemini    || undefined,
+      openai:    settings.apiKeyOpenai    || undefined,
+      groq:      settings.apiKeyGroq      || undefined,
+      anthropic: settings.apiKeyAnthropic || undefined,
+    }).catch(() => {});
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };

@@ -273,6 +273,9 @@ export const settingsApi = {
   get:    (key: string)                                  => api.get<SystemSetting>(`/settings/${key}`),
   upsert: (setting_key: string, setting_value: string)  => api.post('/settings/upsert', { setting_key, setting_value }),
   delete: (setting_key: string)                          => api.post('/settings/delete', { setting_key }),
+  getLlmKeys: () => api.get<Record<string, { configured: boolean; preview: string | null }>>('/settings/llm-keys'),
+  saveLlmKeys: (keys: { gemini?: string; openai?: string; groq?: string; anthropic?: string }) =>
+    api.post('/settings/llm-keys', keys),
 };
 
 // ─── PROSPECTS ───────────────────────────────────────────────────────────────
