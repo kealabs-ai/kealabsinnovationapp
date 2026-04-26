@@ -127,6 +127,7 @@ export interface ChatSession {
   agent_tone: AgentTone;
   llm_model?: string;
   api_key?: string;
+  system_prompt?: string;
   created_at: string;
   updated_at: string;
 }

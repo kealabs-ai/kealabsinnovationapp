@@ -173,12 +173,10 @@ export function useSettings() {
 
   const update = (patch: Partial<ServiceSettings>) => {
     const STRING_KEYS: (keyof ServiceSettings)[] = ['llmProvider', 'llmModel', 'apiKeyGemini', 'apiKeyOpenai', 'apiKeyAnthropic', 'apiKeyGroq'];
-    const API_KEY_FIELDS: (keyof ServiceSettings)[] = ['apiKeyGemini', 'apiKeyOpenai', 'apiKeyAnthropic', 'apiKeyGroq'];
     setSettings((prev) => {
       const next = { ...prev, ...patch } as ServiceSettings;
       localStorage.setItem(CACHE_KEY, JSON.stringify(next));
       for (const [k, v] of Object.entries(patch) as [keyof ServiceSettings, unknown][]) {
-        if (API_KEY_FIELDS.includes(k)) continue; // salvas via settingsApi.saveLlmKeys no handleSave
         const dbKey = KEY_MAP[k];
         const apiVal = STRING_KEYS.includes(k)
           ? String(v)

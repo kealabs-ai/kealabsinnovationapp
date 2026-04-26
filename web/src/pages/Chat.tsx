@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, Trash2, Sparkles, Plus, MessageSquare, ChevronDown, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { Send, Bot, User, Trash2, Sparkles, Plus, MessageSquare, ChevronDown, PanelLeftClose, PanelLeftOpen, Globe, BarChart2, BrainCircuit, Headphones, Server, MessageCircle } from 'lucide-react';
 import { chatApi } from '../lib/api';
 import type { ChatMessage, ChatSession } from '../lib/api';
 import { useAgentProfile } from '../lib/useAgentProfile';
@@ -57,13 +57,13 @@ function renderInline(text: string): React.ReactNode {
   });
 }
 
-const SUGGESTIONS = [
-  'Quais serviços vocês oferecem?',
-  'Quanto custa um site profissional?',
-  'O que é um AI Agent?',
-  'Como funciona o suporte mensal?',
-  'Qual a diferença entre os planos de hospedagem?',
-  'Vocês fazem integração com WhatsApp?',
+const SUGGESTIONS: { icon: React.ElementType; label: string; text: string }[] = [
+  { icon: Globe,         label: 'Serviços',    text: 'Quais serviços vocês oferecem?' },
+  { icon: BarChart2,     label: 'Preços',      text: 'Quanto custa um site profissional?' },
+  { icon: BrainCircuit,  label: 'AI Agent',    text: 'O que é um AI Agent?' },
+  { icon: Headphones,    label: 'Suporte',     text: 'Como funciona o suporte mensal?' },
+  { icon: Server,        label: 'Hospedagem',  text: 'Qual a diferença entre os planos de hospedagem?' },
+  { icon: MessageCircle, label: 'WhatsApp',    text: 'Vocês fazem integração com WhatsApp?' },
 ];
 
 function fmtDate(iso: string) {
@@ -76,7 +76,7 @@ function fmtDate(iso: string) {
 
 export function Chat() {
   const { profile } = useAgentProfile();
-  const { settings } = useSettings();
+  const { settings, loaded: settingsLoaded } = useSettings();
   const [session, setSession]       = useState<ChatSession | null>(null);
   const [sessions, setSessions]     = useState<ChatSession[]>([]);
   const [messages, setMessages]     = useState<ChatMessage[]>([]);
@@ -101,6 +101,7 @@ export function Chat() {
       .catch(() => {});
 
   useEffect(() => {
+    if (!settingsLoaded) return;
     loadSessions();
     const savedId = localStorage.getItem(SESSION_KEY);
     if (savedId) {
@@ -111,28 +112,63 @@ export function Chat() {
     } else {
       createSession();
     }
-  }, []);
+  }, [settingsLoaded]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, loading]);
 
   const getApiKey = (llm: string) => {
-    if (llm.startsWith('gemini'))  return settings.apiKeyGemini  || undefined;
-    if (llm.startsWith('gpt'))     return settings.apiKeyOpenai   || undefined;
+    if (llm.startsWith('gemini'))  return settings.apiKeyGemini   || undefined;
+    if (llm.startsWith('gpt'))     return settings.apiKeyOpenai    || undefined;
     if (llm.startsWith('claude'))  return settings.apiKeyAnthropic || undefined;
     if (llm.startsWith('llama') || llm.startsWith('mixtral')) return settings.apiKeyGroq || undefined;
     return undefined;
   };
 
+  const buildSystemPrompt = () => {
+    const toneMap: Record<string, string> = {
+      formal:     'Use linguagem corporativa, objetiva e profissional.',
+      friendly:   'Use linguagem próxima, descontraída e empática.',
+      technical:  'Use linguagem técnica com foco em detalhes e especificações.',
+      consultive: 'Faça perguntas para entender a dor do cliente antes de apresentar soluções.',
+    };
+    const toneInstruction = toneMap[profile.tone] ?? toneMap.consultive;
+
+    return [
+      `Você é ${profile.name}, ${profile.role} da empresa ${profile.company}.`,
+      ``,
+      `## Tom de comunicação`,
+      toneInstruction,
+      ``,
+      `## Serviços que você oferece`,
+      profile.services,
+      ``,
+      `## Como lidar com objeções`,
+      profile.objections,
+      ``,
+      `## Estilo de fechamento`,
+      profile.closingStyle,
+      ...(profile.systemPrompt ? [``, `## Instruções adicionais`, profile.systemPrompt] : []),
+      ``,
+      `## Regras obrigatórias`,
+      `- Responda SEMPRE em português do Brasil.`,
+      `- Nunca invente preços ou prazos — diga que vai verificar e retornar.`,
+      `- Seja direto e objetivo. Evite respostas genéricas.`,
+      `- Quando o cliente demonstrar interesse, proponha um próximo passo concreto.`,
+      `- Nunca saia do seu papel de ${profile.role} da ${profile.company}.`,
+    ].join('\n');
+  };
+
   const createSession = async (llm?: string) => {
     try {
       const r = await chatApi.createSession({
-        agent_name: profile.name,
-        agent_role: profile.role,
-        agent_tone: profile.tone,
-        llm_model:  llm ?? model,
-        api_key:    getApiKey(llm ?? model),
+        agent_name:    profile.name,
+        agent_role:    profile.role,
+        agent_tone:    profile.tone,
+        llm_model:     llm ?? model,
+        api_key:       getApiKey(llm ?? model),
+        system_prompt: buildSystemPrompt(),
       });
       setSession(r.data);
       localStorage.setItem(SESSION_KEY, r.data.id);
@@ -375,25 +411,53 @@ export function Chat() {
         <div className="flex-1 overflow-y-auto flex flex-col gap-3 px-4 py-4 min-h-0">
 
           {messages.length === 0 && (
-            <div className="flex flex-col items-center justify-center gap-4 py-10 flex-1">
-              <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-orange-600 to-orange-400 flex items-center justify-center shadow-lg">
-                <Sparkles size={28} className="text-white" />
+            <div className="flex flex-col items-center justify-center gap-6 py-8 flex-1">
+
+              {/* Avatar + identidade */}
+              <div className="flex flex-col items-center gap-3">
+                <div className="relative">
+                  <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-orange-600 to-orange-400 flex items-center justify-center shadow-xl">
+                    <Sparkles size={34} className="text-white" />
+                  </div>
+                  <span className="absolute -bottom-1 -right-1 flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full shadow"
+                    style={{ background: '#DCFCE7', color: '#166534' }}>
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" /> online
+                  </span>
+                </div>
+                <div className="text-center">
+                  <p className="font-black text-xl" style={{ color: 'var(--kea-heading)' }}>Olá! Sou {profile.name} 👋</p>
+                  <p className="text-sm mt-1" style={{ color: 'var(--kea-body)' }}>
+                    {profile.role} da <span className="font-bold" style={{ color: '#EA580C' }}>{profile.company}</span>
+                  </p>
+                  <p className="text-xs mt-2 max-w-sm" style={{ color: 'var(--kea-subtle)' }}>
+                    Posso te ajudar com orçamentos, dúvidas sobre serviços e muito mais. Por onde começamos?
+                  </p>
+                </div>
               </div>
-              <div className="text-center">
-                <p className="font-black text-lg" style={{ color: 'var(--kea-heading)' }}>Olá! Sou {profile.name}</p>
-                <p className="text-sm mt-1 max-w-xs" style={{ color: 'var(--kea-body)' }}>
-                  {profile.role} da {profile.company}. Posso te ajudar com orçamentos, dúvidas sobre serviços e muito mais.
+
+              {/* Sugestões */}
+              <div className="w-full max-w-xl">
+                <p className="text-[11px] font-black uppercase tracking-wider text-center mb-3" style={{ color: 'var(--kea-subtle)' }}>
+                  Perguntas frequentes
                 </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {SUGGESTIONS.map(({ icon: Icon, label, text }) => (
+                    <button key={text} onClick={() => send(text)}
+                      className="group flex items-center gap-3 px-4 py-3 rounded-2xl border-2 text-left transition-all duration-200 hover:border-orange-500 hover:shadow-md"
+                      style={{ borderColor: 'var(--kea-border)', backgroundColor: 'var(--kea-surface)' }}>
+                      <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors"
+                        style={{ backgroundColor: '#FFF1E6' }}>
+                        <Icon size={15} className="text-orange-500 group-hover:text-orange-600" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-black uppercase tracking-wider" style={{ color: '#EA580C' }}>{label}</p>
+                        <p className="text-xs truncate" style={{ color: 'var(--kea-heading)' }}>{text}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full max-w-lg mt-2">
-                {SUGGESTIONS.map(s => (
-                  <button key={s} onClick={() => send(s)}
-                    className="text-left text-xs px-3 py-2.5 rounded-xl border-2 transition-all hover:border-orange-500 hover:bg-orange-50"
-                    style={{ borderColor: 'var(--kea-border)', color: 'var(--kea-body)', backgroundColor: 'var(--kea-surface)' }}>
-                    {s}
-                  </button>
-                ))}
-              </div>
+
             </div>
           )}
 
