@@ -87,7 +87,17 @@ export function useAgentProfile() {
       };
 
       if (agentIdRef.current) {
-        agentsApi.update({ id: agentIdRef.current, ...body }).catch(() => {});
+        agentsApi.update({ id: agentIdRef.current, ...body }).catch((err) => {
+          // Se o agente não existe mais no banco, cria um novo
+          if (err?.response?.status === 404) {
+            agentIdRef.current = undefined;
+            agentsApi.create({ ...body, is_active: true }).then((r) => {
+              agentIdRef.current = r.data.id;
+              setProfile((p) => ({ ...p, id: r.data.id }));
+              localStorage.setItem(CACHE_KEY, JSON.stringify({ ...next, id: r.data.id }));
+            }).catch(() => {});
+          }
+        });
       } else {
         agentsApi.create(body).then((r) => {
           agentIdRef.current = r.data.id;
