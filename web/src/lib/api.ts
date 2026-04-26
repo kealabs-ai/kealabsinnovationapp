@@ -274,7 +274,7 @@ export const settingsApi = {
   upsert: (setting_key: string, setting_value: string)  => api.post('/settings/upsert', { setting_key, setting_value }),
   delete: (setting_key: string)                          => api.post('/settings/delete', { setting_key }),
   getLlmKeys: () => api.get<Record<string, { configured: boolean; preview: string | null }>>('/settings/llm-keys'),
-  saveLlmKeys: (keys: { gemini?: string; openai?: string; groq?: string; anthropic?: string }) =>
+  saveLlmKeys: (keys: { gemini?: string | null; openai?: string | null; groq?: string | null; anthropic?: string | null }) =>
     api.post('/settings/llm-keys', keys),
 };
 

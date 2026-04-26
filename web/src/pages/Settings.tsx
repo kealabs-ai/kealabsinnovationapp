@@ -61,16 +61,20 @@ export function Settings() {
     </div>
   );
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const model = settings.llmModel ?? 'gemini-2.0-flash';
     updateProfile({ llm_model: model });
-    // Salva API keys no banco via settings service
-    settingsApi.saveLlmKeys({
-      gemini:    settings.apiKeyGemini    || undefined,
-      openai:    settings.apiKeyOpenai    || undefined,
-      groq:      settings.apiKeyGroq      || undefined,
-      anthropic: settings.apiKeyAnthropic || undefined,
-    }).catch(() => {});
+    // Salva API keys no banco — envia apenas as que têm valor
+    const keys = {
+      gemini:    settings.apiKeyGemini    || null,
+      openai:    settings.apiKeyOpenai    || null,
+      groq:      settings.apiKeyGroq      || null,
+      anthropic: settings.apiKeyAnthropic || null,
+    };
+    const hasAnyKey = Object.values(keys).some(v => v !== null);
+    if (hasAnyKey) {
+      await settingsApi.saveLlmKeys(keys as Record<string, string>).catch(() => {});
+    }
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
